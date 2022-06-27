@@ -1,31 +1,15 @@
+#These are the necassary variables to run the gibbs Sampler
 PARAMETERS = {
 
-    #Knowns for Ground Truth
-    'grndAlpha': 10,
-    'grndMeanX': 0,
-    'grndMeanY': 0,
-    'grndSigmaX': 5,
-    'grndSigmaY': 5,
-    'grndMag': 1000,
-    'grndZ': None,
-
     #General Knowns
-    'nDataX': 20,
-    'nDataY': 20,
     'nInduX': 10,
     'nInduY': 10,
     'nFineX': 50,
     'nFineY': 50,
     'covLambda': 5000,
     'covL': 2,
-    'minX': -5,
-    'maxX': 5,
-    'minY': -5,
-    'maxY': 5,
 
     #Knowns to be evaluated
-    'data': None,
-    'grndCoordinates': None,
     'induCoordinates': None,
     'fineCoordinates': None,
     'cInduIndu': None,
@@ -49,4 +33,27 @@ PARAMETERS = {
 
     # Sampler parameters
     'epsilon': 1e-3,
+}
+
+#These are the neccasary variables for synthetic data generation
+SYNTHETICPARAMETERS = {
+
+    #Knowns to generate Ground Truth
+    'xInitial': 5,
+    'yInitial': 6,
+    'd0': 1,
+    'dVariance': 2,
+
+    #Ground Truth
+    'dObserved': None,
+}
+
+
+
+#This is the object of data
+DATA = {
+    'dataX': None,
+    'dataY': None,
+    'timeVect': None,
+    'nData': None,
 }
