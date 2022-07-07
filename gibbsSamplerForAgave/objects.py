@@ -1,3 +1,6 @@
+import numpy as np
+
+
 #These are the necassary variables to run the gibbs Sampler
 PARAMETERS = {
 
@@ -6,10 +9,10 @@ PARAMETERS = {
     'nInduY': 10,
     'nFineX': 50,
     'nFineY': 50,
-    'covLambda': 5000,
-    'covL': 2,
 
     #Knowns to be evaluated
+    'dataCoordinates': None,
+    'sampleCoordinates': None,
     'induCoordinates': None,
     'fineCoordinates': None,
     'cInduIndu': None,
@@ -20,15 +23,12 @@ PARAMETERS = {
 
     # Variables
     'P': float,
-    'alpha': float,
-    'fIndu': None,
+    'dIndu': None,
 
     # Priors
-    'ell': 1,
-    'sig': 10,
+    'covLambda': 5000,
+    'covL': 20,
     'fInduMean': 0,
-    'alphaShape': 1,
-    'alphaScale': 1000,
 
 
     # Sampler parameters
@@ -39,21 +39,23 @@ PARAMETERS = {
 SYNTHETICPARAMETERS = {
 
     #Knowns to generate Ground Truth
-    'xInitial': 5,
-    'yInitial': 6,
-    'd0': 1,
-    'dVariance': 2,
+    'xInitial': [5, 4, 1, 10, 14],
+    'yInitial': [1, 13, 4, 15, 6],
+    'd0': 5,
+    'dVariance': 0,
+    'nTrajectories': 5,
+    'lengthTrajectories': 100,
+    'deltaT': 1,
 
     #Ground Truth
     'dObserved': None,
+    
 }
-
-
 
 #This is the object of data
 DATA = {
-    'dataX': None,
-    'dataY': None,
-    'timeVect': None,
+    'trajectories': None,
+    'trajectoriesIndex': None,
+    'deltaT': None,
     'nData': None,
 }
