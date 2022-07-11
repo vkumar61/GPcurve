@@ -27,7 +27,7 @@ PARAMETERS = {
 
     # Priors
     'covLambda': 5000,
-    'covL': 20,
+    'covL': 2,
     'fInduMean': 0,
 
 
@@ -39,12 +39,14 @@ PARAMETERS = {
 SYNTHETICPARAMETERS = {
 
     #Knowns to generate Ground Truth
-    'xInitial': [5, 4, 1, 10, 14],
-    'yInitial': [1, 13, 4, 15, 6],
-    'd0': 5,
+    'xInitial': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'yInitial': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    'min':-30,
+    'max':30,
+    'd0': 20,
     'dVariance': 0,
-    'nTrajectories': 5,
-    'lengthTrajectories': 100,
+    'nTrajectories': 10,
+    'lengthTrajectories': 1000,
     'deltaT': 1,
 
     #Ground Truth
@@ -58,4 +60,5 @@ DATA = {
     'trajectoriesIndex': None,
     'deltaT': None,
     'nData': None,
+    'nTrajectories': None,
 }
