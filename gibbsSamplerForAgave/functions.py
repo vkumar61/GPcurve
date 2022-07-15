@@ -19,16 +19,15 @@ def dataGenerator(generationParam, data):
     nTraj = generationParam.nTrajectories
     lengthTraj = generationParam.lengthTrajectories
     nData = nTraj*lengthTraj
-    minimum = generationParam.min
-    maximum = generationParam.max
+    #minimum = generationParam.min
+    #maximum = generationParam.max
     
     #Define function that establishes form of diffusion coefficient through space
-    def diffusion(mean):
+    def diffusion(point):
         
-        xterm = np.exp(-((mean[0] - 0)**2)/(2*20**2))
-        yterm = np.exp(-((mean[1] - 0)**2)/(2*20**2))
-        value = 10*xterm*yterm
-        #value = (np.linalg.norm(mean)/10)+1
+        xterm = np.exp(-((point[0] - 0)**2)/(2*10**2))
+        yterm = np.exp(-((point[1] - 0)**2)/(2*10**2))
+        value = 1 + 50*xterm*yterm
         return value
 
     #Initialize Trajectory
@@ -44,7 +43,7 @@ def dataGenerator(generationParam, data):
     for h in range(nTraj):
         
         #initial position
-        tempTraj[0] = [xInitial[h],yInitial[h]]
+        tempTraj[0] = [xInitial,yInitial]
         trajIndex[h*lengthTraj] = h+1
         
 
@@ -58,8 +57,8 @@ def dataGenerator(generationParam, data):
             
             tempTraj[i] = np.random.normal(mean, sd)
 
-            while (np.any(tempTraj[i] < minimum) or np.any(tempTraj[i] > maximum)):
-                tempTraj[i] = np.random.normal(mean, sd)
+            #while (np.any(tempTraj[i] < minimum) or np.any(tempTraj[i] > maximum)):
+            #    tempTraj[i] = np.random.normal(mean, sd)
 
             #save index of trajectory and the observed diffusion at that point
             trajIndex[h*lengthTraj+i] = h+1
@@ -161,7 +160,7 @@ def initialization(variables, data):
     cInduInduChol = np.linalg.cholesky(cInduIndu + np.eye(nInduX*nInduY)*epsilon)
     
     #Initial Guess
-    dIndu = 20 * np.ones(nInduX * nInduY)
+    dIndu = 2 * np.ones(nInduX * nInduY)
 
 
     #Initial Probability
@@ -184,6 +183,7 @@ def initialization(variables, data):
 
     return variables
 
+#This function is a Metropolis sampler that samples from the posterior
 def diffusionSampler(variables, data):
 
     #necassary variables
@@ -198,17 +198,19 @@ def diffusionSampler(variables, data):
 
     # Propose new dIndu
     dInduOld = variables.dIndu
-    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.0001
+    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * .1
 
     #Make sure sampled diffusion vallues are all positive
-    #while np.any(dInduNew<0):
-    #    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.01
+    while np.any(dInduNew < 0):
+        dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
 
+    priorMean = np.zeros(nIndu)
     # Calculate probabilities of induced samples
     def probability(dIndu):
 
         # Prior
-        prior = stats.multivariate_normal.logpdf(dIndu.T, mean = np.zeros(nIndu), cov=cInduIndu)
+        diff = dIndu - priorMean
+        prior = np.exp((-0.5) * diff.T @ cInduInduInv @ diff)
         
         #grnd of data associated with fIndu
         dData = cInduData.T @ cInduInduInv @ dIndu
@@ -227,35 +229,9 @@ def diffusionSampler(variables, data):
     #Acceptance value
     acc_prob = pNew - pOld
 
-    #Accept or Reject
     if np.log(np.random.rand()) < acc_prob:
         variables.dIndu = dInduNew
         variables.P = lhoodNew
 
     return variables
 
-
-def plots (dVect, pVect, variables):
-
-
-    mapCoordinates = variables.dataCoordinates
-    cInduInduInv = variables.cInduInduInv
-    cInduData = variables.cInduData
-
-    mapIndex = pVect.index(max(pVect))
-    
-    #Inducing Points
-    initialIndu = dVect[0]
-    mapIndu = dVect[mapIndex]
-    
-    #Transformed to data Points
-    learnedMap = cInduData.T @ cInduInduInv @ mapIndu
-    initialMap = cInduData.T @ cInduInduInv @ initialIndu
-
-    fig = plt.figure()
-    ax = fig.add_subplot(projection='3d')
-
-    initialPlot = ax.scatter(mapCoordinates[:,1], mapCoordinates[:,1], initialMap)
-    mapPlot = ax.scatter(mapCoordinates[:,1], mapCoordinates[:,1], learnedMap)
-
-    return fig
