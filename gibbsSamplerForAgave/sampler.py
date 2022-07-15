@@ -16,11 +16,10 @@ dVect = []
 dVect.append(variables.dIndu)
 pVect = []
 
-for i in range(10000000):
+for i in range(10000):
     variables = functions.diffusionSampler(variables, data)
     dVect.append(variables.dIndu)
     pVect.append(variables.P)
 
-functions.plots(dVect, pVect, variables)
 
 

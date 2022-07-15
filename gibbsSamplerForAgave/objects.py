@@ -5,8 +5,8 @@ import numpy as np
 PARAMETERS = {
 
     #General Knowns
-    'nInduX': 10,
-    'nInduY': 10,
+    'nInduX': 11,
+    'nInduY': 11,
     'nFineX': 50,
     'nFineY': 50,
 
@@ -26,8 +26,8 @@ PARAMETERS = {
     'dIndu': None,
 
     # Priors
-    'covLambda': 5000,
-    'covL': 2,
+    'covLambda': 1,
+    'covL': 10,
     'fInduMean': 0,
 
 
@@ -39,14 +39,14 @@ PARAMETERS = {
 SYNTHETICPARAMETERS = {
 
     #Knowns to generate Ground Truth
-    'xInitial': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    'yInitial': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-    'min':-30,
-    'max':30,
+    'xInitial': 0,
+    'yInitial': 0,
+    #'min':-30,
+    #'max':30,
     'd0': 20,
     'dVariance': 0,
-    'nTrajectories': 10,
-    'lengthTrajectories': 1000,
+    'nTrajectories': 100,
+    'lengthTrajectories': 10,
     'deltaT': 1,
 
     #Ground Truth
