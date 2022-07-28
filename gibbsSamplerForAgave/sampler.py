@@ -3,6 +3,7 @@ from types import SimpleNamespace
 from scipy import stats
 import functions
 import objects
+import matplotlib.pyplot as plt
 
 
 
@@ -22,4 +23,5 @@ for i in range(10000):
     pVect.append(variables.P)
 
 
-
+plt.plot(pVect)
+plt.show()
