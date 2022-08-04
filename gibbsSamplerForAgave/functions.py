@@ -1,82 +1,8 @@
+from statistics import mode
 import numpy as np
 from types import SimpleNamespace
 from scipy import stats
 import matplotlib.pyplot as plt
-
-# This function generates synthetic data
-def dataGenerator(generationParam, data):
-    
-    #initialize
-    data = SimpleNamespace(**data)
-    generationParam = SimpleNamespace(**generationParam)
-
-    #Extract necassary variables
-    xInitial = generationParam.xInitial
-    yInitial = generationParam.yInitial
-    deltaT = generationParam.deltaT
-    d0 = generationParam.d0
-    dVariance = generationParam.dVariance
-    nTraj = generationParam.nTrajectories
-    lengthTraj = generationParam.lengthTrajectories
-    nData = nTraj*lengthTraj
-    #minimum = generationParam.min
-    #maximum = generationParam.max
-    
-    #Define function that establishes form of diffusion coefficient through space
-    def diffusion(point):
-        
-        xterm = np.exp(-((point[0] - 0)**2)/(2*10**2))
-        yterm = np.exp(-((point[1] - 0)**2)/(2*10**2))
-        value = 1 + 50*xterm*yterm
-        return value
-
-    #Initialize Trajectory
-    trajectories = np.empty((0,2))
-    tempTraj = np.zeros((lengthTraj,2))
-    trajIndex = np.zeros(nData)
-    dObserved = np.zeros(nData)
-    dObserved[0] = d0
-
-    
-
-    #Sample Trajectory
-    for h in range(nTraj):
-        
-        #initial position
-        tempTraj[0] = [xInitial,yInitial]
-        trajIndex[h*lengthTraj] = h+1
-        
-
-        #loop through full length of each trajectory
-        for i in range(1,lengthTraj):
-
-            #Sample diffusion
-            mean = tempTraj[i-1]
-            dPoint = diffusion(mean)
-            sd = np.sqrt(2*dPoint*(deltaT))
-            
-            tempTraj[i] = np.random.normal(mean, sd)
-
-            #while (np.any(tempTraj[i] < minimum) or np.any(tempTraj[i] > maximum)):
-            #    tempTraj[i] = np.random.normal(mean, sd)
-
-            #save index of trajectory and the observed diffusion at that point
-            trajIndex[h*lengthTraj+i] = h+1
-            dObserved[h*lengthTraj+i] = dPoint
-
-        trajectories = np.concatenate((trajectories,tempTraj))
-
-
-    #save all variables created
-    generationParam.dObserved = dObserved
-    data.trajectories = trajectories
-    data.nData = nData
-    data.deltaT = deltaT
-    data.trajectoriesIndex = trajIndex
-    data.nTrajectories = generationParam.nTrajectories
-    
-    
-    return generationParam, data
 
 '''This is a function that returns a covariance matrix between two position vectors
     based on square exponential kernal with parameters covLambda and covL'''    
@@ -112,17 +38,14 @@ def initialization(variables, data):
     covLambda = variables.covLambda
     covL = variables.covL
     epsilon = variables.epsilon
+    deltaT = data.deltaT
     
     dataX = trajectories[:,0]
     dataY = trajectories[:,1]
     minX = min(dataX)
-    #minX = -20
     minY = min(dataY)
-    #minY = -20
     maxX = max(dataX)
-    #maxX = 20
     maxY = max(dataY)
-    #maxY = 20
 
    #define coordinates for Inducing points
     x = np.linspace(minX, maxX, nInduX)
@@ -159,8 +82,12 @@ def initialization(variables, data):
     cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.eye(nInduX*nInduY))
     cInduInduChol = np.linalg.cholesky(cInduIndu + np.eye(nInduX*nInduY)*epsilon)
     
-    #Initial Guess
-    dIndu = 2 * np.ones(nInduX * nInduY)
+    #Initial Guess with MLE
+    diff = sampleCoordinates - dataCoordinates
+    num = np.sum(diff * diff)
+    den = 4*deltaT*len(diff)
+    mle = num/den
+    dIndu = mle * np.ones(nInduX * nInduY)
 
 
     #Initial Probability
@@ -191,6 +118,7 @@ def diffusionSampler(variables, data):
     cInduIndu = variables.cInduIndu
     cInduData = variables.cInduData
     cInduInduInv = variables.cInduInduInv
+    deltaT = data.deltaT
     means = variables.dataCoordinates
     samples = variables.sampleCoordinates
     data = data.trajectories
@@ -198,7 +126,7 @@ def diffusionSampler(variables, data):
 
     # Propose new dIndu
     dInduOld = variables.dIndu
-    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * .1
+    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
 
     #Make sure sampled diffusion vallues are all positive
     while np.any(dInduNew < 0):
@@ -217,7 +145,7 @@ def diffusionSampler(variables, data):
         sd = np.vstack((dData, dData)).T
         
         #Likelihood of that data
-        lhood = np.sum(stats.norm.logpdf(samples, loc = means, scale = np.sqrt(2*sd*1)))
+        lhood = np.sum(stats.norm.logpdf(samples, loc = means, scale = np.sqrt(2*sd*deltaT)))
         prob = lhood + prior
 
         return lhood, prob
@@ -235,3 +163,43 @@ def diffusionSampler(variables, data):
 
     return variables
 
+#This function generates a plot of the MAP as a contour plot
+def plots(variables, dVect, pVect, data):
+
+    nFineX = variables.nFineX
+    nFineY = variables.nFineY
+    cInduFine = variables.cInduFine
+    cInduInduInv = variables.cInduInduInv
+    fineCoordinates = variables.fineCoordinates
+    trajectories = data.trajectories
+
+    shape = (nFineX, nFineY)
+
+    unshapedMap = cInduFine.T @ cInduInduInv @ dVect[pVect.index(max(pVect))]
+    
+    shapedMap = np.reshape(unshapedMap, shape)
+    shapedX = np.reshape(fineCoordinates[:,0], shape)
+    shapedY = np.reshape(fineCoordinates[:,1], shape)
+
+    fig = plt.figure()
+
+    mapPlot = plt.contour(shapedX, shapedY, shapedMap)
+    
+    plt.clabel(mapPlot, inline=1, fontsize=10)
+    plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.5)
+
+    return fig
+
+def probPlot(pVect):
+
+    fig = plt.figure()
+    plt.plot(pVect)
+
+    return fig
+
+def trajPlot(data):
+    
+    fig = plt.figure()
+    plt.scatter(data.trajectories[:,0], data.trajectories[:,1] )
+
+    return fig
