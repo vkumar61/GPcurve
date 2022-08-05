@@ -2,11 +2,11 @@ import numpy as np
 from types import SimpleNamespace
 from scipy import stats
 import matplotlib.pyplot as plt
-import syntheticData
 import functions
 import objects
 import os
 import time
+import h5py
 
 
 #read datafile
@@ -38,7 +38,7 @@ dVect.append(variables.dIndu)
 pVect = []
 
 startTime = time.time()
-for i in range(10000):
+for i in range(50000):
     variables = functions.diffusionSampler(variables, data)
     dVect.append(variables.dIndu)
     pVect.append(variables.P)
@@ -51,3 +51,4 @@ plot1.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figur
 plot2.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/prob.png')
 
 print(endTime-startTime)
+print(pVect.index(max(pVect)))

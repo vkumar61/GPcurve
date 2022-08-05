@@ -1,3 +1,4 @@
+from cProfile import label
 from statistics import mode
 import numpy as np
 from types import SimpleNamespace
@@ -183,10 +184,10 @@ def plots(variables, dVect, pVect, data):
 
     fig = plt.figure()
 
-    mapPlot = plt.contour(shapedX, shapedY, shapedMap)
+    mapPlot = plt.contour(shapedX, shapedY, shapedMap, levels = 25)
     
     plt.clabel(mapPlot, inline=1, fontsize=10)
-    plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.5)
+    plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.01)
 
     return fig
 
