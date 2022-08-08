@@ -38,7 +38,7 @@ dVect.append(variables.dIndu)
 pVect = []
 
 startTime = time.time()
-for i in range(50000):
+for i in range(150000):
     variables = functions.diffusionSampler(variables, data)
     dVect.append(variables.dIndu)
     pVect.append(variables.P)
@@ -46,9 +46,13 @@ endTime = time.time()
 
 plot1 = functions.plots(variables, dVect, pVect, data)
 plot2 = functions.probPlot(pVect)
+plot3 = functions.probPlot(pVect[100:])
+plot4 = functions.meanPlot(variables, dVect, data)
 
-plot1.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/MAP.png')
-plot2.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/prob.png')
+plot1.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/map150.png')
+plot2.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/prob150.png')
+plot3.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/probTrunc150.png')
+plot4.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/mean150.png')
 
 print(endTime-startTime)
 print(pVect.index(max(pVect)))

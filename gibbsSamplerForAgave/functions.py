@@ -89,6 +89,7 @@ def initialization(variables, data):
     den = 4*deltaT*len(diff)
     mle = num/den
     dIndu = mle * np.ones(nInduX * nInduY)
+    
 
 
     #Initial Probability
@@ -108,6 +109,7 @@ def initialization(variables, data):
     variables.cInduInduInv = cInduInduInv
     variables.dIndu = dIndu
     variables.P = prob
+    variables.dInduPrior = mle
 
     return variables
 
@@ -124,6 +126,7 @@ def diffusionSampler(variables, data):
     samples = variables.sampleCoordinates
     data = data.trajectories
     chol = variables.cInduInduChol
+    dInduPrior = variables.dInduPrior
 
     # Propose new dIndu
     dInduOld = variables.dIndu
@@ -133,7 +136,7 @@ def diffusionSampler(variables, data):
     while np.any(dInduNew < 0):
         dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
 
-    priorMean = np.zeros(nIndu)
+    priorMean = dInduPrior*np.ones(nIndu)
     # Calculate probabilities of induced samples
     def probability(dIndu):
 
@@ -198,9 +201,28 @@ def probPlot(pVect):
 
     return fig
 
-def trajPlot(data):
+def meanPlot(variables, dVect, data):
     
+    nFineX = variables.nFineX
+    nFineY = variables.nFineY
+    cInduFine = variables.cInduFine
+    cInduInduInv = variables.cInduInduInv
+    fineCoordinates = variables.fineCoordinates
+    trajectories = data.trajectories
+
+    shape = (nFineX, nFineY)
+
+    unshapedMap = cInduFine.T @ cInduInduInv @ np.mean(dVect, 0)
+    
+    shapedMap = np.reshape(unshapedMap, shape)
+    shapedX = np.reshape(fineCoordinates[:,0], shape)
+    shapedY = np.reshape(fineCoordinates[:,1], shape)
+
     fig = plt.figure()
-    plt.scatter(data.trajectories[:,0], data.trajectories[:,1] )
+
+    mapPlot = plt.contour(shapedX, shapedY, shapedMap, levels = 25)
+    
+    plt.clabel(mapPlot, inline=1, fontsize=10)
+    plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.01)
 
     return fig
