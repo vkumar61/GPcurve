@@ -25,7 +25,7 @@ PARAMETERS = {
     # Priors
     'covLambda': 1,
     'covL': 10,
-    'dInduPrior': 0,
+    'dInduPrior': None,
 
 
     # Sampler parameters
