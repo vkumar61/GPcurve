@@ -1,0 +1,31 @@
+if __name__ == "__main__":
+
+
+    # Get system argument
+    ID = 1
+    if len(sys.argv) > 1:
+        ID = int(sys.argv[1])
+
+
+def run_file(file, num_iterations, **kwargs):
+
+    data = load(file)
+
+    parameters = {**kwargs}
+
+    savename = set_savename(file, **kwargs)
+
+    MAP, history = DiffusionAnalyzer.analyze(
+        data, 
+        parameters=parameters, 
+        num_iterations=num_iterations, 
+        saveas=savename,
+    )
+
+    return
+
+
+json file:
+{
+    "python.terminal.executeInFileDir": true,
+}

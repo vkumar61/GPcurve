@@ -142,7 +142,7 @@ def diffusionSampler(variables, data):
 
         # Prior
         diff = dIndu - priorMean
-        prior = np.exp((-0.5) * diff.T @ cInduInduInv @ diff)
+        prior = np.log(np.exp((-0.5) * diff.T @ cInduInduInv @ diff))
         
         #grnd of data associated with fIndu
         dData = cInduData.T @ cInduInduInv @ dIndu
