@@ -6,11 +6,11 @@ import functions
 import objects
 import os
 import time
-import h5py
+import csv
 
 
 #read datafile
-with open("C:/Users/User/Downloads/data_to_share.txt") as inp:
+with open("C:/Users/vkuma/Downloads/data_to_share.txt") as inp:
     tempData = [i.strip().split('\t') for i in inp]
 
 cleanData = []
@@ -38,7 +38,7 @@ dVect.append(variables.dIndu)
 pVect = []
 
 startTime = time.time()
-for i in range(450000):
+for i in range(400000):
     variables = functions.diffusionSampler(variables, data)
     dVect.append(variables.dIndu)
     pVect.append(variables.P)
@@ -49,11 +49,14 @@ plot2 = functions.probPlot(pVect)
 plot3 = functions.probPlot(pVect[100:])
 plot4 = functions.meanPlot(variables, dVect, data)
 
-plot1.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/map450.png')
-plot2.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/prob450.png')
-plot3.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/probTrunc450.png')
-plot4.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/mean450.png')
+#plot1.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/map450.png')
+#plot2.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/prob450.png')
+#plot3.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/probTrunc450.png')
+#plot4.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/figures/mean450.png')
 
 print(variables.dInduPrior)
 print(endTime-startTime)
 print(pVect.index(max(pVect)))
+
+np.savetxt("samples" + str(variables.covL) + " " + str(variables.covLambda) + ".csv", dVect, delimiter=", ", fmt="% s")
+np.savetxt("probability" + str(variables.covL) + " " + str(variables.covLambda) + ".csv", pVect, delimiter=", ", fmt="% s")

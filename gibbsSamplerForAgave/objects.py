@@ -24,7 +24,7 @@ PARAMETERS = {
 
     # Priors
     'covLambda': 1,
-    'covL': 10,
+    'covL': 20,
     'dInduPrior': None,
 
 

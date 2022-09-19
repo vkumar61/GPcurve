@@ -24,7 +24,7 @@ pVect = []
 
 startTime = time.time()
 
-for i in range(60):
+for i in range(1000):
     variables = functions.diffusionSampler(variables, data)
     dVect.append(variables.dIndu)
     pVect.append(variables.P)
@@ -35,6 +35,7 @@ print(endTime-startTime)
 plot1 = syntheticData.plots(variables, generationParam, dVect, pVect)
 plot2 = functions.probPlot(pVect)
 
+plt.show()
 
-plot1.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/syntheticFigures/plot.png')
-plot2.savefig('C:/Users/User/Documents/GitHub/GPcurve/gibbsSamplerForAgave/syntheticFigures/prob.png')
+np.savetxt("samples.csv", dVect, delimiter=", ", fmt="% s")
+np.savetxt("probability.csv", pVect, delimiter=", ", fmt="% s")
