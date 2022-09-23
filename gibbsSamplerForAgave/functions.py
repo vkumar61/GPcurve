@@ -1,17 +1,17 @@
-from cProfile import label
-from statistics import mode
+#from cProfile import label
+#from statistics import mode
 import numpy as np
 from types import SimpleNamespace
 from scipy import stats
 import matplotlib.pyplot as plt
 
-'''This is a function that returns a covariance matrix between two position vectors
-    based on square exponential kernal with parameters covLambda and covL'''    
+#create a covariance matrix based on data at hand   
 def covMat(coordinates1, coordinates2, covLambda, covL):
+
     #Create empty matrix for covariance
     C = np.zeros((len(coordinates1), len(coordinates2)))
     
-    #loop over all indecies in covariance matrix
+    #loop over all indices in covariance matrix
     for i in range(len(coordinates1)):
         for j in range(len(coordinates2)):
             #Calculate distance between points
@@ -23,11 +23,12 @@ def covMat(coordinates1, coordinates2, covLambda, covL):
     return C
 
 #initialize sampler parameters
-def initialization(variables, data):
+def initialization(variables, data, covLambda, covL):
 
-    #declare variables as object of 
+    #declare variables as instance of SimpleNamespace
     variables = SimpleNamespace(**variables)
 
+    #pull necassary variables
     trajectories = data.trajectories
     nData = data.nData
     nTraj = data.nTrajectories
@@ -36,11 +37,10 @@ def initialization(variables, data):
     nInduY = variables.nInduY
     nFineX = variables.nFineX
     nFineY = variables.nFineY
-    covLambda = variables.covLambda
-    covL = variables.covL
+    variables.covLambda = covLambda
+    variables.covL = covL
     epsilon = variables.epsilon
     deltaT = data.deltaT
-    
     dataX = trajectories[:,0]
     dataY = trajectories[:,1]
     minX = min(dataX)
@@ -48,7 +48,7 @@ def initialization(variables, data):
     maxX = max(dataX)
     maxY = max(dataY)
 
-   #define coordinates for Inducing points
+    #define coordinates for Inducing points
     x = np.linspace(minX, maxX, nInduX)
     y = np.linspace(minY, maxY, nInduY)
     xTemp, yTemp = np.meshgrid(x, y)
@@ -68,13 +68,13 @@ def initialization(variables, data):
     dataCoordinates = np.empty((0,2))
     for i in range((nData-1)):
         if (trajectoriesIndex[i] == trajectoriesIndex[i+1]):
-            dataCoordinates = np.vstack((dataCoordinates,trajectories[i]))
+            dataCoordinates = np.vstack((dataCoordinates, trajectories[i]))
 
     #Points of trajectory that are "sampled"
     sampleCoordinates = np.empty((0,2))
     for i in range(1,nData):
         if (trajectoriesIndex[i] == trajectoriesIndex[i-1]):
-            sampleCoordinates = np.vstack((sampleCoordinates,trajectories[i]))
+            sampleCoordinates = np.vstack((sampleCoordinates, trajectories[i]))
 
     #detrmine Covarince matrices
     cInduIndu = covMat(induCoordinates, induCoordinates, covLambda, covL)
@@ -152,24 +152,25 @@ def diffusionSampler(variables, data):
         lhood = np.sum(stats.norm.logpdf(samples, loc = means, scale = np.sqrt(2*sd*deltaT)))
         prob = lhood + prior
 
-        return lhood, prob
+        return prob
 
     #Probability of old and new function
-    lhoodOld, pOld = probability(dInduOld)
-    lhoodNew, pNew = probability(dInduNew)
+    pOld = probability(dInduOld)
+    pNew = probability(dInduNew)
     
     #Acceptance value
     acc_prob = pNew - pOld
 
     if np.log(np.random.rand()) < acc_prob:
         variables.dIndu = dInduNew
-        variables.P = lhoodNew
+        variables.P = pNew
 
     return variables
 
 #This function generates a plot of the MAP as a contour plot
 def plots(variables, dVect, pVect, data):
 
+    #necassary variables
     nFineX = variables.nFineX
     nFineY = variables.nFineY
     cInduFine = variables.cInduFine
@@ -177,32 +178,37 @@ def plots(variables, dVect, pVect, data):
     fineCoordinates = variables.fineCoordinates
     trajectories = data.trajectories
 
+    #shape for plot
     shape = (nFineX, nFineY)
 
+    #sample with maximum probability
     unshapedMap = cInduFine.T @ cInduInduInv @ dVect[pVect.index(max(pVect))]
     
+    #reshape variables to make plotting easy
     shapedMap = np.reshape(unshapedMap, shape)
     shapedX = np.reshape(fineCoordinates[:,0], shape)
     shapedY = np.reshape(fineCoordinates[:,1], shape)
 
+    #generate contour plot
     fig = plt.figure()
-
     mapPlot = plt.contour(shapedX, shapedY, shapedMap, levels = 25)
-    
     plt.clabel(mapPlot, inline=1, fontsize=10)
     plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.01)
 
     return fig
 
+#This function plots the probability
 def probPlot(pVect):
 
+    #generate plot
     fig = plt.figure()
     plt.plot(pVect)
 
     return fig
 
+#This function plots the mean of all dVect samples
 def meanPlot(variables, dVect, data):
-    
+    #necassary variables
     nFineX = variables.nFineX
     nFineY = variables.nFineY
     cInduFine = variables.cInduFine
@@ -210,18 +216,20 @@ def meanPlot(variables, dVect, data):
     fineCoordinates = variables.fineCoordinates
     trajectories = data.trajectories
 
+    #shape for plot
     shape = (nFineX, nFineY)
 
+    #take mean of all samples
     unshapedMap = cInduFine.T @ cInduInduInv @ np.mean(dVect, 0)
     
+    #reshape variables to make plotting easy
     shapedMap = np.reshape(unshapedMap, shape)
     shapedX = np.reshape(fineCoordinates[:,0], shape)
     shapedY = np.reshape(fineCoordinates[:,1], shape)
 
+    #generate contour plot
     fig = plt.figure()
-
     mapPlot = plt.contour(shapedX, shapedY, shapedMap, levels = 25)
-    
     plt.clabel(mapPlot, inline=1, fontsize=10)
     plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.01)
 

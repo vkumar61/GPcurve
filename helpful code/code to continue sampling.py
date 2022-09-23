@@ -1,6 +1,6 @@
 import numpy as np
 from types import SimpleNamespace
-from scipy import stats
+#from scipy import stats
 import matplotlib.pyplot as plt
 import functions
 import objects

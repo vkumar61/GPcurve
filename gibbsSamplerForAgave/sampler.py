@@ -1,41 +1,34 @@
 import numpy as np
 from types import SimpleNamespace
-from scipy import stats
-import matplotlib.pyplot as plt
-import syntheticData
+#from scipy import stats
+#import matplotlib.pyplot as plt
 import functions
 import objects
-import os
-import time
 
-startTime = time.time()
-# Initialize variables
-generationParam, data = syntheticData.dataGenerator(syntheticData.SYNTHETICPARAMETERS, objects.DATA)
+def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
 
-variables = functions.initialization(objects.PARAMETERS, data)
+    #initialize data and variables
+    data = SimpleNamespace(**objects.DATA)
+    data.trajectoriesIndex = dataVectIndex
+    data.trajectories = dataVect
+    data.deltaT = deltaT
+    data.nData = len(data.trajectoriesIndex)
+    data.nTrajectories = np.unique(data.trajectoriesIndex)
+    variables = functions.initialization(objects.PARAMETERS, data, covLambda, covL)
 
-endTime = time.time()
-print(endTime-startTime)
-
-#vectors to store diffusion samples and their probabilities
-dVect = []
-dVect.append(variables.dIndu)
-pVect = []
-
-startTime = time.time()
-
-for i in range(1000):
-    variables = functions.diffusionSampler(variables, data)
+    #vectors to store diffusion samples and their probabilities
+    dVect = []
     dVect.append(variables.dIndu)
+    pVect = []
     pVect.append(variables.P)
 
-endTime = time.time()
-print(endTime-startTime)
+    for i in range(nIter):
+        variables = functions.diffusionSampler(variables, data)
+        dVect.append(variables.dIndu)
+        pVect.append(variables.P)
 
-plot1 = syntheticData.plots(variables, generationParam, dVect, pVect)
-plot2 = functions.probPlot(pVect)
-
-plt.show()
-
-np.savetxt("samples.csv", dVect, delimiter=", ", fmt="% s")
-np.savetxt("probability.csv", pVect, delimiter=", ", fmt="% s")
+    #Save Samples as CSV files
+    np.savetxt(str(nIter) + "samples(" + str(variables.covLambda) + " " + str(variables.covL) + ").csv", dVect, delimiter=", ", fmt="% f")
+    np.savetxt(str(nIter) + "probability(" + str(variables.covLambda) + " " + str(variables.covL) + ").csv", pVect, delimiter=", ", fmt="% f")
+    
+    return()

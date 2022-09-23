@@ -13,12 +13,13 @@ import csv
 with open("C:/Users/vkuma/Downloads/data_to_share.txt") as inp:
     tempData = [i.strip().split('\t') for i in inp]
 
+#clean the data
 cleanData = []
 for i in tempData:
     if i != ['']:
         cleanData.append(i)
 
-
+#coordinates for trajectories
 x = np.array([float(i[2]) for i in cleanData])
 y = np.array([float(i[3]) for i in cleanData])
 
@@ -39,7 +40,7 @@ pVect = []
 pVect.append(variables.P)
 
 startTime = time.time()
-for i in range(450000):
+for i in range(1):
     variables = functions.diffusionSampler(variables, data)
     dVect.append(variables.dIndu)
     pVect.append(variables.P)
