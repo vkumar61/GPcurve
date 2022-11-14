@@ -1,3 +1,5 @@
+
+import h5py
 import numpy as np
 from types import SimpleNamespace
 #from scipy import stats
@@ -22,10 +24,19 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     pVect = []
     pVect.append(variables.P)
 
+    h5 = h5py.File("test", 'w')
+    h5.create_dataset(name="dIndu", shape=(nIter, 2500), chunks=(1,2500), dtype=float)
+    h5.close()
+
     for i in range(nIter):
         variables = functions.diffusionSampler(variables, data)
-        dVect.append(variables.dIndu)
-        pVect.append(variables.P)
+        # dVect.append(variables.dIndu)
+        # pVect.append(variables.P)
+
+        h5 = h5py.File("test", 'r+')
+        h5["dIndu"][i, :] = variables.dIndu
+        h5.close()
+
 
     #Save Samples as CSV files
     np.savetxt(str(nIter) + "samples(" + str(variables.covLambda) + " " + str(variables.covL) + ").csv", dVect, delimiter=", ", fmt="% f")

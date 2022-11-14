@@ -1,6 +1,7 @@
 #from cProfile import label
 #from statistics import mode
 import numpy as np
+from scipy import sparse
 from types import SimpleNamespace
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -10,14 +11,31 @@ def covMat(coordinates1, coordinates2, covLambda, covL):
 
     #Create empty matrix for covariance
     C = np.zeros((len(coordinates1), len(coordinates2)))
-    
-    #loop over all indices in covariance matrix
+
+    rows = []
+    cols = []
+    vals = []
     for i in range(len(coordinates1)):
         for j in range(len(coordinates2)):
             #Calculate distance between points
             dist = np.sqrt((coordinates1[i,0] - coordinates2[j,0])**2 + (coordinates1[i,1] - coordinates2[j,1])**2)
             #Determine each element of covariance matrix
-            C[i][j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
+            val = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
+            if np.abs(val) > 1e-6:
+                rows.append(i)
+                cols.append(j)
+                vals.append(val)
+    
+    # Check this out: https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html
+    C = sparse.csr_matrix(vals, rows cols, shape=(len(coordinates1), len(coordinates2)))
+    
+    # #loop over all indices in covariance matrix
+    # for i in range(len(coordinates1)):
+    #     for j in range(len(coordinates2)):
+    #         #Calculate distance between points
+    #         dist = np.sqrt((coordinates1[i,0] - coordinates2[j,0])**2 + (coordinates1[i,1] - coordinates2[j,1])**2)
+    #         #Determine each element of covariance matrix
+    #         C[i, j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
 
     #Return Covariance Matrix
     return C
@@ -93,7 +111,7 @@ def initialization(variables, data, covLambda, covL):
 
 
     #Initial Probability
-    dData = cInduData.T @ cInduInduInv @ dIndu
+    dData = cInduData.T @ (cInduInduInv @ dIndu)
     sd = np.vstack((dData, dData)).T
     prob = np.sum(stats.norm.logpdf(sampleCoordinates, loc = dataCoordinates, scale = np.sqrt(2*sd*1)))
 
@@ -182,7 +200,7 @@ def plots(variables, dVect, pVect, data):
     shape = (nFineX, nFineY)
 
     #sample with maximum probability
-    unshapedMap = cInduFine.T @ cInduInduInv @ dVect[pVect.index(max(pVect))]
+    unshapedMap = cInduFine.T @ cInduInduInv @ (dVect[pVect.index(max(pVect))])
     
     #reshape variables to make plotting easy
     shapedMap = np.reshape(unshapedMap, shape)
