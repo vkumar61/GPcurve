@@ -8,7 +8,7 @@ covL = 20
 covLambda = 1
 
 #number of samples to generate
-nIter = 1
+nIter = 100000
 print('Will attempt to run ' + str(nIter) + ' iterations with length parameter ' + str(covL))
 
 #load vectors from read csv File
