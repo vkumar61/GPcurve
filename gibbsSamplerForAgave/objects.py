@@ -2,10 +2,10 @@
 PARAMETERS = {
 
     #General Knowns
-    'nInduX': 11,   #number of x inducing points
-    'nInduY': 11,   #number of y grid points (total inducing points is nInduY*nInduX)
-    'nFineX': 50,   #fine grid points in x
-    'nFineY': 50,   #fine grid points in y (total fine points is nFineY*nFineX)
+    'nInduX': 50,   #number of x inducing points
+    'nInduY': 50,   #number of y grid points (total inducing points is nInduY*nInduX)
+    'nFineX': 100,   #fine grid points in x
+    'nFineY': 100,   #fine grid points in y (total fine points is nFineY*nFineX)
 
     #Knowns to be evaluated
     'dataCoordinates': None,    #all points of each trajectory exepts final location

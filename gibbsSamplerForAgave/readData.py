@@ -13,13 +13,13 @@ def dataReader(path):
             cleanData.append(i)
     
     #coordinates for trajectories
-    x = np.array([float(i[2]) for i in cleanData])
-    y = np.array([float(i[3]) for i in cleanData])
+    x = np.array([float(i[3]) for i in cleanData])
+    y = np.array([float(i[4]) for i in cleanData])
 
     #save organized dat in respective vectors
     dataVect = np.vstack((x,y)).T
-    dataVectIndex = np.array([int(i[0]) for i in cleanData])
-    deltaT = 0.0001                                         #put manually as unavailable from data file
+    dataVectIndex = np.array([int(i[1]) for i in cleanData])
+    deltaT = 1/30                                         #put manually as unavailable from data file
     return dataVect, dataVectIndex, deltaT
 
 

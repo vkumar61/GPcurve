@@ -29,3 +29,9 @@ json file:
 {
     "python.terminal.executeInFileDir": true,
 }
+
+
+MAP = history.get('map')
+    probs = history.get('P')
+    last = min([*np.where(probs == 0)[0], probs.shape[0]])
+    burn = int(.9 * last)
