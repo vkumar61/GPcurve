@@ -4,6 +4,7 @@ from ctypes import pointer
 import numpy as np
 from types import SimpleNamespace
 from scipy import stats
+from scipy import sparse
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
@@ -11,17 +12,24 @@ from matplotlib import cm
 def covMat(coordinates1, coordinates2, covLambda, covL):
 
     #Create empty matrix for covariance
-    C = np.zeros((len(coordinates1), len(coordinates2)))
-    
+    #C = np.zeros((len(coordinates1), len(coordinates2)))
+    row = []
+    col = []
+    val = []
     #loop over all indices in covariance matrix
     for i in range(len(coordinates1)):
         for j in range(len(coordinates2)):
             #Calculate distance between points
             dist = np.sqrt((coordinates1[i,0] - coordinates2[j,0])**2 + (coordinates1[i,1] - coordinates2[j,1])**2)
             #Determine each element of covariance matrix
-            C[i][j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
-
+            #C[i][j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
+            value = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
+            if value > 0:
+                row.append(i)
+                col.append(j)
+                val.append(value)
     #Return Covariance Matrix
+    C = sparse.csr_matrix((val, (row, col)), shape=(len(coordinates1), len(coordinates2)))
     return C
 
 #initialize sampler parameters
