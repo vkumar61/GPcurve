@@ -10,7 +10,7 @@ covLambda = 1
 nIter = 100
 
 #load vectors from read csv File
-dataVect, dataVectIndex, deltaT = readData.dataReader("C:/Users/vkuma/Downloads/data_to_share.txt")
+dataVect, dataVectIndex, deltaT = readData.dataReader("C:/Users/vkuma/Downloads/datas_to_share.txt")
 
 #generate samples
 sampler.analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL)
