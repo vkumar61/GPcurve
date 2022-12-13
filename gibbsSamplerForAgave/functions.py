@@ -141,8 +141,8 @@ def diffusionMapSampler(variables, data):
     dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
 
     #Make sure sampled diffusion vallues are all positive
-    while np.any(dInduNew < 0):
-        dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
+    if np.any(dInduNew < 0):
+        return variables
 
     priorMean = dInduPrior*np.ones(nIndu)
     # Calculate probabilities of induced samples
