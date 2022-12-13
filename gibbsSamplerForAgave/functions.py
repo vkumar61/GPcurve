@@ -4,7 +4,6 @@ from ctypes import pointer
 import numpy as np
 from types import SimpleNamespace
 from scipy import stats
-from scipy import sparse
 import matplotlib.pyplot as plt
 from matplotlib import cm
 
@@ -12,24 +11,17 @@ from matplotlib import cm
 def covMat(coordinates1, coordinates2, covLambda, covL):
 
     #Create empty matrix for covariance
-    #C = np.zeros((len(coordinates1), len(coordinates2)))
-    row = []
-    col = []
-    val = []
+    C = np.zeros((len(coordinates1), len(coordinates2)))
+    
     #loop over all indices in covariance matrix
     for i in range(len(coordinates1)):
         for j in range(len(coordinates2)):
             #Calculate distance between points
             dist = np.sqrt((coordinates1[i,0] - coordinates2[j,0])**2 + (coordinates1[i,1] - coordinates2[j,1])**2)
             #Determine each element of covariance matrix
-            #C[i][j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
-            value = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
-            if value > 0:
-                row.append(i)
-                col.append(j)
-                val.append(value)
+            C[i][j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
+
     #Return Covariance Matrix
-    C = sparse.csr_matrix((val, (row, col)), shape=(len(coordinates1), len(coordinates2)))
     return C
 
 #initialize sampler parameters
@@ -101,7 +93,7 @@ def initialization(variables, data, covLambda, covL):
     dIndu = mle * np.ones(nInduX * nInduY)
     
     #Initial Probability
-    dData = cInduData.T @ cInduInduInv @ dIndu
+    dData = cInduData.T @ (cInduInduInv @ dIndu)
     sd = np.vstack((dData, dData)).T
     prob = np.sum(stats.norm.logpdf(sampleCoordinates, loc = dataCoordinates, scale = np.sqrt(2*sd*1)))
 
@@ -150,10 +142,10 @@ def diffusionMapSampler(variables, data):
 
         # Prior
         diff = dIndu - priorMean
-        prior = np.log(np.exp((-0.5) * diff.T @ cInduInduInv @ diff))
+        prior = np.log(np.exp((-0.5) * diff.T @ (cInduInduInv @ diff)))
         
         #grnd of data associated with fIndu
-        dData = cInduData.T @ cInduInduInv @ dIndu
+        dData = cInduData.T @ (cInduInduInv @ dIndu)
         sd = np.vstack((dData, dData)).T
         
         #Likelihood of that data
@@ -211,10 +203,10 @@ def diffusionPointSampler(variables, data):
 
         # Prior
         diff = dIndu - priorMean
-        prior = np.log(np.exp((-0.5) * diff.T @ cInduInduInv @ diff))
+        prior = np.log(np.exp((-0.5) * diff.T @ (cInduInduInv @ diff)))
         
         #grnd of data associated with fIndu
-        dData = cInduData.T @ cInduInduInv @ dIndu
+        dData = cInduData.T @ (cInduInduInv @ dIndu)
         sd = np.vstack((dData, dData)).T
         
         #Likelihood of that data
@@ -251,7 +243,7 @@ def plots(variables, dVect, pVect, data):
     shape = (nFineX, nFineY)
 
     #sample with maximum probability
-    unshapedMap = cInduFine.T @ cInduInduInv @ dVect[pVect.index(max(pVect))]
+    unshapedMap = cInduFine.T @ (cInduInduInv @ dVect[pVect.index(max(pVect))])
     
     #reshape variables to make plotting easy
     shapedMap = np.reshape(unshapedMap, shape)
@@ -292,7 +284,7 @@ def meanPlot(variables, dVect, data):
     shape = (nFineX, nFineY)
 
     #take mean of all samples
-    unshapedMap = cInduFine.T @ cInduInduInv @ np.mean(dVect, 0)
+    unshapedMap = cInduFine.T @ (cInduInduInv @ np.mean(dVect, 0))
     
     #reshape variables to make plotting easy
     shapedMap = np.reshape(unshapedMap, shape)
@@ -320,7 +312,7 @@ def plotThreeD(variables, dVect, data):
     shape = (nFineX, nFineY)
 
     #take mean of all samples
-    unshapedMap = cInduFine.T @ cInduInduInv @ np.mean(dVect, 0)
+    unshapedMap = cInduFine.T @ (cInduInduInv @ np.mean(dVect, 0))
     
     #reshape variables to make plotting easy
     shapedMap = np.reshape(unshapedMap, shape)
