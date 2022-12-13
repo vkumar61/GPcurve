@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -t 2-00:00
+#SBATCH -t 7-00:00
 #SBATCH -o _job0_.out
 #SBATCH -e _job0_.err
 
