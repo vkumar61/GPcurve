@@ -6,8 +6,9 @@ from types import SimpleNamespace
 from scipy import stats
 import matplotlib.pyplot as plt
 from matplotlib import cm
-
-#create a covariance matrix based on data at hand   
+import numba as nb
+#create a covariance matrix based on data at hand
+@nb.njit(cache=True)
 def covMat(coordinates1, coordinates2, covLambda, covL):
 
     #Create empty matrix for covariance
@@ -130,7 +131,7 @@ def diffusionMapSampler(variables, data):
 
     # Propose new dIndu
     dInduOld = variables.dIndu
-    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
+    dInduNew = dInduOld + np.random.randn(nIndu) @ chol
 
     #Make sure sampled diffusion vallues are all positive
     if np.any(dInduNew < 0):
@@ -142,7 +143,7 @@ def diffusionMapSampler(variables, data):
 
         # Prior
         diff = dIndu - priorMean
-        prior = np.log(np.exp((-0.5) * diff.T @ (cInduInduInv @ diff)))
+        prior = (-0.5) * diff.T @ (cInduInduInv @ diff)
         
         #grnd of data associated with fIndu
         dData = cInduData.T @ (cInduInduInv @ dIndu)
@@ -203,7 +204,7 @@ def diffusionPointSampler(variables, data):
 
         # Prior
         diff = dIndu - priorMean
-        prior = np.log(np.exp((-0.5) * diff.T @ (cInduInduInv @ diff)))
+        prior = (-0.5) * diff.T @ (cInduInduInv @ diff)
         
         #grnd of data associated with fIndu
         dData = cInduData.T @ (cInduInduInv @ dIndu)

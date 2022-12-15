@@ -19,13 +19,14 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     data.nTrajectories = np.unique(data.trajectoriesIndex)
     variables = functions.initialization(objects.PARAMETERS, data, covLambda, covL)
     endTime = time.time()
-    file = open("variables.pkl","wb")
+    file = open(str(nIter) + " " + str(variables.covLambda) + " " + str(variables.covL) + "variables.pkl","wb")
     pickle.dump(variables, file) 
     file.close()
-    file = open("data.pkl","wb")
+    file = open(str(nIter) + " " + str(variables.covLambda) + " " + str(variables.covL) + "data.pkl","wb")
     pickle.dump(data, file) 
     file.close()
     print("Initialization Done: " + str(endTime - startTime))
+    print("Mle: " + str(variables.dInduPrior))
 
     #vectors to store diffusion samples and their probabilities
     dVect = []
@@ -35,17 +36,17 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     
     startTime = time.time()
     for i in range(nIter):
-        decider = np.random.uniform()
-        if (i % 10000) == 0:
-            print(str(i) + ' samples taken')
-        if decider < 0.5:
-            variables = functions.diffusionMapSampler(variables, data)
-            dVect.append(variables.dIndu)
-            pVect.append(variables.P)
-        else:
-            variables = functions.diffusionPointSampler(variables, data)
-            dVect.append(variables.dIndu)
-            pVect.append(variables.P)
+        #decider = np.random.uniform()
+        #if (i % 10000) == 0:
+        #    print(str(i) + ' samples taken')
+        #if decider < 0.5:
+        variables = functions.diffusionMapSampler(variables, data)
+        dVect.append(variables.dIndu)
+        pVect.append(variables.P)
+        #else:
+        #    variables = functions.diffusionPointSampler(variables, data)
+        #    dVect.append(variables.dIndu)
+        #    pVect.append(variables.P)
     endTime = time.time()
         
     print(str(nIter) + " samples in " + str(endTime-startTime) + " seconds." )

@@ -1,9 +1,9 @@
 import numpy as np
 
-def dataReader(path, num):
+def dataReader(path):
     
     #to reduce runtime and memeory needs we only take nth element from the data
-    n = num
+    #n = num
     
     #read datafile
     with open(path) as inp:
@@ -24,11 +24,11 @@ def dataReader(path, num):
     dataVectIndex = np.array([int(i[1]) for i in cleanData])
     
     #sub sample
-    dataVect = dataVect[1::n]
-    dataVectIndex = dataVectIndex[1::n]
+    #dataVect = dataVect[1::n]
+    #dataVectIndex = dataVectIndex[1::n]
     
     #put time step manually as unavailable from data file
-    deltaT = (1/30)*n
+    deltaT = (1/30)
 
-    print('We only used every ' + str(n) + 'th datapoint')
+    #print('We only used every ' + str(n) + 'th datapoint')
     return dataVect, dataVectIndex, deltaT
