@@ -7,6 +7,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numba as nb
+
 #create a covariance matrix based on data at hand
 @nb.njit(cache=True)
 def covMat(coordinates1, coordinates2, covLambda, covL):
@@ -85,7 +86,7 @@ def initialization(variables, data, covLambda, covL):
     cInduFine = covMat(induCoordinates, fineCoordinates, covLambda, covL)
     cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.eye(nInduX*nInduY))
     cInduInduChol = np.linalg.cholesky(cInduIndu + np.eye(nInduX*nInduY)*epsilon)
-    
+
     #Initial Guess with MLE
     diff = sampleCoordinates - dataCoordinates
     num = np.sum(diff * diff)
@@ -128,10 +129,10 @@ def diffusionMapSampler(variables, data):
     data = data.trajectories
     chol = variables.cInduInduChol
     dInduPrior = variables.dInduPrior
+    dInduOld = variables.dIndu
 
     # Propose new dIndu
-    dInduOld = variables.dIndu
-    dInduNew = dInduOld + np.random.randn(nIndu) @ chol
+    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
 
     #Make sure sampled diffusion vallues are all positive
     if np.any(dInduNew < 0):
@@ -143,7 +144,7 @@ def diffusionMapSampler(variables, data):
 
         # Prior
         diff = dIndu - priorMean
-        prior = (-0.5) * diff.T @ (cInduInduInv @ diff)
+        prior =  (-1/2)*(diff.T @ (cInduInduInv @ diff))
         
         #grnd of data associated with fIndu
         dData = cInduData.T @ (cInduInduInv @ dIndu)
@@ -204,7 +205,7 @@ def diffusionPointSampler(variables, data):
 
         # Prior
         diff = dIndu - priorMean
-        prior = (-0.5) * diff.T @ (cInduInduInv @ diff)
+        prior = (-1/2)*(diff.T @ (cInduInduInv @ diff))
         
         #grnd of data associated with fIndu
         dData = cInduData.T @ (cInduInduInv @ dIndu)

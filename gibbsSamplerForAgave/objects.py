@@ -2,8 +2,8 @@
 PARAMETERS = {
 
     #General Knowns
-    'nInduX': 11,   #number of x inducing points
-    'nInduY': 11,   #number of y grid points (total inducing points is nInduY*nInduX)
+    'nInduX': 50,   #number of x inducing points
+    'nInduY': 50,   #number of y grid points (total inducing points is nInduY*nInduX)
     'nFineX': 100,   #fine grid points in x
     'nFineY': 100,   #fine grid points in y (total fine points is nFineY*nFineX)
 
