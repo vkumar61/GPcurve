@@ -23,13 +23,21 @@ SYNTHETICPARAMETERS = {
 #Define function that establishes form of diffusion coefficient through space
 def diffusion(point):
 
-    xterm = np.exp(-((point[0] - 0)**2)/(2*10**2))
-    yterm = np.exp(-((point[1] - 0)**2)/(2*10**2))
-    value = 1 + 50*xterm*yterm
+    xterm1 = np.exp(-((point[0] - 0)**2)/(2*40**2))
+    yterm1 = np.exp(-((point[1] - 0)**2)/(2*40**2))
+    xterm2 = np.exp(-((point[0] - 200)**2)/(2*40**2))
+    yterm2 = np.exp(-((point[1] - 0)**2)/(2*40**2))
+    xterm3 = np.exp(-((point[0] - 200)**2)/(2*40**2))
+    yterm3 = np.exp(-((point[1] - 200)**2)/(2*40**2))
+    xterm4 = np.exp(-((point[0] - 0)**2)/(2*40**2))
+    yterm4 = np.exp(-((point[1] - 200)**2)/(2*40**2))
+    xterm5 = np.exp(-((point[0] - 100)**2)/(2*25**2))
+    yterm5 = np.exp(-((point[1] - 100)**2)/(2*25**2))
+    value = 1 + 5*xterm1*yterm1 + 4*xterm2*yterm2 + 7*xterm3*yterm3 + 3*xterm4*yterm4 + 4*xterm5*yterm5
     return value
 
 # This function generates synthetic data
-def dataGenerator(generationParam, data):
+def dataGenerator(data, generationParam):
 
     #initialize
     data = SimpleNamespace(**data)
@@ -56,7 +64,7 @@ def dataGenerator(generationParam, data):
     for h in range(nTraj):
 
         #initial position
-        tempTraj[0] = [np.random.randint(-10,10), np.random.randint(-10,10)]
+        tempTraj[0] = [np.random.randint(1,250), np.random.randint(1,250)]
         trajIndex[h*lengthTraj] = h+1
 
 

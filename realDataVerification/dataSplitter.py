@@ -25,7 +25,7 @@ def dataReader(path):
     deltaT = (1/30)
 
     #split up data based on grid location
-    if x > 
-
+    if (i % 10000) == 0:
+    
     #print('We only used every ' + str(n) + 'th datapoint')
     return dataVect, dataVectIndex, deltaT
