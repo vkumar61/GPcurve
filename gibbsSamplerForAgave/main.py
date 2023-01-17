@@ -6,7 +6,7 @@ import readData
 import os
 
 #hyper parameters
-covL = 50
+covL = 40
 covLambda = 1
 
 #number of samples to generate
@@ -14,8 +14,8 @@ nIter = 100
 print('Will attempt to run ' + str(nIter) + ' iterations with length parameter ' + str(covL))
 
 #load vectors from read csv File
-dataVect, dataVectIndex, deltaT = readData.dataReader('C:/Users/vkuma/Research/LearningDiffusionMaps/LargeDatasets/dataset1/movie010.txt')
-print('data was read safely and there are ' + str(max(set(dataVectIndex))) + ' trajectories')
+dataVect, dataVectIndex, deltaT = readData.dataReader('C:/Users/vkuma/Research/LearningDiffusionMaps/LargeDatasets/dataset1/movie001.txt', 150000)
+print('data was read safely and there are ' + str(max(set(dataVectIndex))) + ' trajectories and ' + str(len(dataVectIndex)) + " data points")
 
 #dataVect = dataVect*97
 #generate samples
