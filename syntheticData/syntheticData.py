@@ -11,7 +11,7 @@ SYNTHETICPARAMETERS = {
     'yInitial': 0,
     'd0': 20,
     'dVariance': 0,
-    'nTrajectories': 2000,
+    'nTrajectories': 15000,
     'lengthTrajectories': 10,
     'deltaT': 1,
 
