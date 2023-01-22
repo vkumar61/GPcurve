@@ -23,17 +23,12 @@ SYNTHETICPARAMETERS = {
 #Define function that establishes form of diffusion coefficient through space
 def diffusion(point):
 
-    xterm1 = np.exp(-((point[0] - 0)**2)/(2*40**2))
-    yterm1 = np.exp(-((point[1] - 0)**2)/(2*40**2))
-    xterm2 = np.exp(-((point[0] - 200)**2)/(2*40**2))
-    yterm2 = np.exp(-((point[1] - 0)**2)/(2*40**2))
-    xterm3 = np.exp(-((point[0] - 200)**2)/(2*40**2))
-    yterm3 = np.exp(-((point[1] - 200)**2)/(2*40**2))
-    xterm4 = np.exp(-((point[0] - 0)**2)/(2*40**2))
-    yterm4 = np.exp(-((point[1] - 200)**2)/(2*40**2))
-    xterm5 = np.exp(-((point[0] - 100)**2)/(2*25**2))
-    yterm5 = np.exp(-((point[1] - 100)**2)/(2*25**2))
-    value = 1 + 5*xterm1*yterm1 + 4*xterm2*yterm2 + 7*xterm3*yterm3 + 3*xterm4*yterm4 + 4*xterm5*yterm5
+    x = point[0]
+    y = point[1]
+    xterm = np.sin(x/30)
+    yterm = np.sin(y/30)
+    value = 2*(2+xterm+yterm)
+    
     return value
 
 # This function generates synthetic data
