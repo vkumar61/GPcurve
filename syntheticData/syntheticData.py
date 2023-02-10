@@ -13,7 +13,7 @@ SYNTHETICPARAMETERS = {
     'dVariance': 0,
     'nTrajectories': 15000,
     'lengthTrajectories': 10,
-    'deltaT': 1,
+    'deltaT': 1/30,
 
     #Ground Truth
     'dObserved': None,

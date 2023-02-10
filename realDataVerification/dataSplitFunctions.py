@@ -47,6 +47,21 @@ def dataReader(path):
     return splitData, deltaT
 
 def mle(sampleCoordinates, dataCoordinates, deltaT):
+    trajectories = data.trajectories
+    nData = data.nData
+    trajectoriesIndex = data.trajectoriesIndex
+
+    #Points of trajectory where learning is possible
+    dataCoordinates = np.empty((0,2))
+    for i in range((nData-1)):
+        if (trajectoriesIndex[i] == trajectoriesIndex[i+1]):
+            dataCoordinates = np.vstack((dataCoordinates, trajectories[i]))
+
+    #Points of trajectory that are "sampled"
+    sampleCoordinates = np.empty((0,2))
+    for i in range(1,nData):
+        if (trajectoriesIndex[i] == trajectoriesIndex[i-1]):
+            sampleCoordinates = np.vstack((sampleCoordinates, trajectories[i]))
 
     #Initial Guess with MLE
     diff = sampleCoordinates - dataCoordinates
