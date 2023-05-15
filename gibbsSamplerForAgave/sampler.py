@@ -36,17 +36,17 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     
     startTime = time.time()
     for i in range(nIter):
-        #decider = np.random.uniform()
-        #if (i % 10000) == 0:
-        #    print(str(i) + ' samples taken')
-        #if decider < 0.5:
-        variables = functions.diffusionMapSampler(variables, data)
-        dVect.append(variables.dIndu)
-        pVect.append(variables.P)
-        #else:
-        #    variables = functions.diffusionPointSampler(variables, data)
-        #    dVect.append(variables.dIndu)
-        #    pVect.append(variables.P)
+        decider = np.random.uniform()
+        if (i % 10000) == 0:
+            print(str(i) + ' samples taken')
+        if decider < 0.9:
+            variables = functions.diffusionMapSampler(variables, data)
+            dVect.append(variables.dIndu)
+            pVect.append(variables.P)
+        else:
+            variables = functions.diffusionPointSampler(variables, data)
+            dVect.append(variables.dIndu)
+            pVect.append(variables.P)
     endTime = time.time()
         
     print(str(nIter) + " samples in " + str(endTime-startTime) + " seconds." )

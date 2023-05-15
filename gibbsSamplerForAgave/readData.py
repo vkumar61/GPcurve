@@ -24,11 +24,11 @@ def dataReader(path, num):
     dataVectIndex = np.array([int(i[1]) for i in cleanData])
     
     #sub sample
-    dataVect = dataVect[1:n]
-    dataVectIndex = dataVectIndex[1:n]
+    dataVect = dataVect[::n]
+    dataVectIndex = dataVectIndex[::n]
     
     #put time step manually as unavailable from data file
-    deltaT = (1/30)
+    deltaT = (1/30)/n
 
     #print('We only used every ' + str(n) + 'th datapoint')
     return dataVect, dataVectIndex, deltaT

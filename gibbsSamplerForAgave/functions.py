@@ -184,49 +184,49 @@ def diffusionPointSampler(variables, data):
     chol = variables.cInduInduChol
     dInduPrior = variables.dInduPrior
     dInduOld = variables.dIndu
-   
     
     # Propose new dIndu by sampling random point
-    pointIndex = np.random.randint(0,len(dInduOld))
-    oldPoint = dInduOld[pointIndex]
-    dInduNew = np.copy(dInduOld)
-    newPoint = oldPoint + np.random.randn() * 0.25    
+    for pointIndex in range(len(dInduOld)):
+        oldPoint = dInduOld[pointIndex]
+        dInduNew = np.copy(dInduOld)
+        newPoint = oldPoint + np.random.randn() * 0.25    
 
-    #Make sure sampled diffusion vallues are all positive
-    while (newPoint < 0):
-        newPoint = oldPoint + np.random.randn() * 0.25
-    
-    #Set new map and prior
-    dInduNew[pointIndex] = newPoint
-    priorMean = dInduPrior*np.ones(nIndu)
-    
-    # Calculate probabilities of induced samples
-    def probability(dIndu):
-
-        # Prior
-        diff = dIndu - priorMean
-        prior = (-1/2)*(diff.T @ (cInduInduInv @ diff))
+        #Make sure sampled diffusion vallues are all positive
+        while (newPoint < 0):
+            newPoint = oldPoint + np.random.randn() * 0.25
         
-        #grnd of data associated with fIndu
-        dData = cInduData.T @ (cInduInduInv @ dIndu)
-        sd = np.vstack((dData, dData)).T
+        #Set new map and prior
+        dInduNew[pointIndex] = newPoint
+        priorMean = dInduPrior*np.ones(nIndu)
         
-        #Likelihood of that data
-        lhood = np.sum(stats.norm.logpdf(samples, loc = means, scale = np.sqrt(2*sd*deltaT)))
-        prob = lhood + prior
+        # Calculate probabilities of induced samples
+        def probability(dIndu):
 
-        return prob
+            # Prior
+            diff = dIndu - priorMean
+            prior = (-1/2)*(diff.T @ (cInduInduInv @ diff))
+            
+            #grnd of data associated with fIndu
+            dData = cInduData.T @ (cInduInduInv @ dIndu)
+            sd = np.vstack((dData, dData)).T
+            
+            #Likelihood of that data
+            lhood = np.sum(stats.norm.logpdf(samples, loc = means, scale = np.sqrt(2*sd*deltaT)))
+            prob = lhood + prior
 
-    #Probability of old and new function
-    pOld = probability(dInduOld)
-    pNew = probability(dInduNew)
-    
-    #Acceptance value
-    acc_prob = pNew - pOld
+            return prob
 
-    if np.log(np.random.rand()) < acc_prob:
-        variables.dIndu = dInduNew
-        variables.P = pNew
+        #Probability of old and new function
+        pOld = probability(dInduOld)
+        pNew = probability(dInduNew)
+        
+        #Acceptance value
+        acc_prob = pNew - pOld
+
+        if np.log(np.random.rand()) < acc_prob:
+            variables.dIndu = dInduNew
+            variables.P = pNew
+        dInduOld = variables.dIndu
 
     return variables
 
