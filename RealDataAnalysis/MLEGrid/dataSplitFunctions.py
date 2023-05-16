@@ -46,7 +46,7 @@ def dataReader(path):
     #print('We only used every ' + str(n) + 'th datapoint')
     return splitData, deltaT
 
-def mle(sampleCoordinates, dataCoordinates, deltaT):
+def mle(sampleCoordinates, dataCoordinates, deltaT, data):
     trajectories = data.trajectories
     nData = data.nData
     trajectoriesIndex = data.trajectoriesIndex
