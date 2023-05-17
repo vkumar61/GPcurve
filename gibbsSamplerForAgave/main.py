@@ -7,18 +7,25 @@ import os
 cwd = os.getcwd()
 print(cwd)
 
-
 #hyper parameters
-covL = 0.5
+covL = 40
 covLambda = 1
 
 #number of samples to generate
-nIter = 1
+nIter = 10
 print('Will attempt to run ' + str(nIter) + ' iterations with length parameter ' + str(covL))
 
 #load vectors from read csv File
-dataVect, dataVectIndex, deltaT = readData.dataReader('C:/Users/vkuma/Research/LearningDiffusionMaps/LargeRealDatasets/dataset1/movie001.txt', 4)
-print('Data was read safely and there are ' + str(max(set(dataVectIndex))) + ' trajectories and ' + str(len(dataVectIndex)) + " data points")
+datapath = 'C:/Users/vkuma/Research/LearningDiffusionMaps/LargeRealDatasets/dataset1/movie001.txt'
+# datapath = os.environ["DATAPATH"] + "Diffusion/movie001.txt"
+dataVect, dataVectIndex, deltaT = readData.dataReader(datapath, 4)
+print(
+    'Data was read safely and there are '
+    + str(max(set(dataVectIndex)))
+    + ' trajectories and '
+    + str(len(dataVectIndex))
+    + " data points"
+)
 
 #transform data to micrometers adjusting for pixel size
 dataVect = dataVect*97/1000

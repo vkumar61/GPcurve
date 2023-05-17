@@ -7,7 +7,7 @@ from scipy import stats
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numba as nb
-
+np.warnings.filterwarnings('error', category=np.VisibleDeprecationWarning)
 #create a covariance matrix based on data at hand
 @nb.njit(cache=True)
 def covMat(coordinates1, coordinates2, covLambda, covL):
@@ -85,6 +85,7 @@ def initialization(variables, data, covLambda, covL):
     cInduData = covMat(induCoordinates, dataCoordinates, covLambda, covL)
     cInduFine = covMat(induCoordinates, fineCoordinates, covLambda, covL)
     cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.eye(nInduX*nInduY))
+    cDataIndu = cInduData.T @ cInduInduInv
     cInduInduChol = np.linalg.cholesky(cInduIndu + np.eye(nInduX*nInduY)*epsilon)
 
     #Initial Guess with MLE
@@ -94,10 +95,26 @@ def initialization(variables, data, covLambda, covL):
     mle = num/den
     dIndu = mle * np.ones(nInduX * nInduY)
     
+    #Potential MLE(for each inducing point based on the covariance kernal) to make initial guess significantly more accurate:
+    diff = sampleCoordinates - dataCoordinates
+    dMleData = np.sum(diff*diff, axis = 1)/(2*deltaT)
+    print('shape of cov matrix:' + str(np.shape(cInduData.T)))
+    print('shape of mleData matrix:' + str(np.shape(dMleData)))
+    prediction = (dMleData @ cInduData.T)/((np.ones(np.shape(dMleData)) @ cInduData.T))
+    print('shape of inducingpoints' + str(np.shape(prediction)))
+    print(prediction)
+
     #Initial Probability
-    dData = cInduData.T @ (cInduInduInv @ dIndu)
+    dData = cDataIndu @ dIndu
     sd = np.vstack((dData, dData)).T
-    prob = np.sum(stats.norm.logpdf(sampleCoordinates, loc = dataCoordinates, scale = np.sqrt(2*sd*1)))
+    prob = np.sum(stats.norm.logpdf(sampleCoordinates, loc = dataCoordinates, scale = np.sqrt(2*sd*deltaT)))
+
+    dData = cDataIndu @ prediction
+    sd = np.vstack((dData, dData)).T
+    prob1 = np.sum(stats.norm.logpdf(sampleCoordinates, loc = dataCoordinates, scale = np.sqrt(2*sd*deltaT)))
+
+    print("Probability of flat surface is: " + str(prob))
+    print("Probability of varying surface is: " + str(prob1))
 
     #save all variable parameters
     variables.sampleCoordinates = sampleCoordinates
@@ -112,6 +129,8 @@ def initialization(variables, data, covLambda, covL):
     variables.dIndu = dIndu
     variables.P = prob
     variables.dInduPrior = mle
+    variables.cDataIndu = cDataIndu
+    variables.dData = dData
 
     return variables
 
@@ -130,6 +149,8 @@ def diffusionMapSampler(variables, data):
     chol = variables.cInduInduChol
     dInduPrior = variables.dInduPrior
     dInduOld = variables.dIndu
+    cDataIndu = variables.cDataIndu
+    P = variables.P
 
     # Propose new dIndu
     dInduNew = dInduOld + np.random.randn(nIndu) @ chol * 0.1
@@ -147,7 +168,7 @@ def diffusionMapSampler(variables, data):
         prior =  (-1/2)*(diff.T @ (cInduInduInv @ diff))
         
         #grnd of data associated with fIndu
-        dData = cInduData.T @ (cInduInduInv @ dIndu)
+        dData = cDataIndu @ dIndu
         sd = np.vstack((dData, dData)).T
         
         #Likelihood of that data
@@ -157,7 +178,7 @@ def diffusionMapSampler(variables, data):
         return prob
 
     #Probability of old and new function
-    pOld = probability(dInduOld)
+    pOld = P
     pNew = probability(dInduNew)
     
     #Acceptance value
@@ -171,7 +192,70 @@ def diffusionMapSampler(variables, data):
 
 #This function is a Metropolis sampler that samples individual points from the posterior 
 def diffusionPointSampler(variables, data):
+    
+    # Define numba version
+    @nb.jit(nopython=True, cache = True)
+    def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, P, dDataOld):
+        priorMean = dInduPrior*np.ones(nIndu)
 
+        #Finds new dData efficiently avoinding matrix multiplication
+        def dDataFunc(cDataIndu, pointIndex, dDataOld, change):
+            value = cDataIndu[:,pointIndex]*(change)
+            dDataNew = dDataOld - value
+            return dDataNew
+        
+        # Calculate probabilities of induced samples
+        def probability(dIndu, change, pointIndex, dDataOld):
+            
+            # Prior
+            diff = dIndu - priorMean
+            prior = (-1/2)*(diff.T @ (cInduInduInv @ diff))
+            
+            #grnd of data associated with fIndu
+            dData = dDataFunc(cDataIndu, pointIndex, dDataOld, change)
+            dDataOld = dData
+            sd = np.vstack((dData, dData)).T
+            
+            #Likelihood of that data
+            #lhood = np.sum(stats.norm.logpdf(samples, loc = means, scale = np.sqrt(2*sd*deltaT)))
+            lhood = 0
+            for i in range(samples.shape[0]):
+                for j in range(samples.shape[1]):
+                    lhood += (
+                        -.5 * (samples[i, j] - means[i, j])**2 / (2*sd[i, j]*deltaT)
+                        - .5 * np.log(2*np.pi*2*sd[i, j]*deltaT)
+                    )
+            prob = lhood + prior
+
+            return prob
+        
+        # Propose new dIndu by sampling random point
+        for pointIndex in range(len(dInduOld)):
+            oldPoint = dInduOld[pointIndex]
+            dInduNew = np.copy(dInduOld)
+            newPoint = oldPoint + np.random.randn() * 0.0025    
+            change = newPoint-oldPoint
+
+            #Make sure sampled diffusion values are all positive
+            while (newPoint < 0):
+                newPoint = oldPoint + np.random.randn() * 0.0025
+            
+            #Set new map and prior
+            dInduNew[pointIndex] = newPoint
+            
+
+            #Probability of old and new function
+            pOld = P
+            pNew = probability(dInduNew, change, pointIndex, dDataOld)
+
+            #Acceptance value
+            acc_prob = pNew - pOld
+            if np.log(np.random.rand()) < acc_prob:
+                dInduOld = dInduNew
+                P = pNew
+        
+        return dInduOld, P
+    
     #necassary variables
     nIndu = variables.nInduX*variables.nInduY
     cInduIndu = variables.cInduIndu
@@ -184,49 +268,14 @@ def diffusionPointSampler(variables, data):
     chol = variables.cInduInduChol
     dInduPrior = variables.dInduPrior
     dInduOld = variables.dIndu
-   
-    
-    # Propose new dIndu by sampling random point
-    pointIndex = np.random.randint(0,len(dInduOld))
-    oldPoint = dInduOld[pointIndex]
-    dInduNew = np.copy(dInduOld)
-    newPoint = oldPoint + np.random.randn() * 0.25    
+    cDataIndu = variables.cDataIndu
+    P = variables.P
+    dDataOld = variables.dData
 
-    #Make sure sampled diffusion vallues are all positive
-    while (newPoint < 0):
-        newPoint = oldPoint + np.random.randn() * 0.25
-    
-    #Set new map and prior
-    dInduNew[pointIndex] = newPoint
-    priorMean = dInduPrior*np.ones(nIndu)
-    
-    # Calculate probabilities of induced samples
-    def probability(dIndu):
-
-        # Prior
-        diff = dIndu - priorMean
-        prior = (-1/2)*(diff.T @ (cInduInduInv @ diff))
-        
-        #grnd of data associated with fIndu
-        dData = cInduData.T @ (cInduInduInv @ dIndu)
-        sd = np.vstack((dData, dData)).T
-        
-        #Likelihood of that data
-        lhood = np.sum(stats.norm.logpdf(samples, loc = means, scale = np.sqrt(2*sd*deltaT)))
-        prob = lhood + prior
-
-        return prob
-
-    #Probability of old and new function
-    pOld = probability(dInduOld)
-    pNew = probability(dInduNew)
-    
-    #Acceptance value
-    acc_prob = pNew - pOld
-
-    if np.log(np.random.rand()) < acc_prob:
-        variables.dIndu = dInduNew
-        variables.P = pNew
+    # Run numba version
+    dIndu, P = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, P, dDataOld)
+    variables.dIndu = dIndu
+    variables.P = P
 
     return variables
 

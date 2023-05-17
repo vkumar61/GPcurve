@@ -11,9 +11,9 @@ SYNTHETICPARAMETERS = {
     'yInitial': 0,
     'd0': 20,
     'dVariance': 0,
-    'nTrajectories': 15000,
-    'lengthTrajectories': 10,
-    'deltaT': 1/30,
+    'nTrajectories': 30000,
+    'lengthTrajectories': 5,
+    'deltaT': 1,
 
     #Ground Truth
     'dObserved': None,
@@ -25,10 +25,9 @@ def diffusion(point):
 
     x = point[0]
     y = point[1]
-    xterm = np.sin(x/30)
-    yterm = np.sin(y/30)
-    value = 2*(2+xterm+yterm)
-    
+    xterm = np.sin(x/75)
+    yterm = np.sin(y/75)
+    value = 1.5*(3+xterm+yterm)
     return value
 
 # This function generates synthetic data

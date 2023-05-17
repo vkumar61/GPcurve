@@ -17,10 +17,12 @@ PARAMETERS = {
     'cInduFine': None,          #covariance matrix between inducing points and fine grid points
     'cInduInduChol': None,      #cholesky decomposition of cInduIndu
     'cInduInduInv': None,       #inverse of cInduIndu
+    'cDataIndu': None,          #product of cInduData*cInduInduInv
 
     # Variables
     'P': float,     #probability of each sample
     'dIndu': None,  #diffusion coefficient sample map at inducing points
+    'dData': None,
 
     # Priors
     'covLambda': 1,     #coefficient of covariance square exponential kernal (1 only used if hyper parameters on specified)

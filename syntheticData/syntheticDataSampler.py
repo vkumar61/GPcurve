@@ -7,6 +7,7 @@ import objects
 import time
 import pickle
 import syntheticData as synthetic
+import h5py
 
 def analyze(nIter, covLambda, covL):
     print('Inititalization Started')
@@ -32,27 +33,33 @@ def analyze(nIter, covLambda, covL):
     
     startTime = time.time()
     for i in range(nIter):
-        #decider = np.random.uniform()
-        #if (i % 10000) == 0:
-        #    print(str(i) + ' samples taken')
-        #if decider < 0.5:
-        variables = functions.diffusionMapSampler(variables, data)
-        dVect.append(variables.dIndu)
-        pVect.append(variables.P)
-        #else:
-        #    variables = functions.diffusionPointSampler(variables, data)
-        #    dVect.append(variables.dIndu)
-        #    pVect.append(variables.P)
+        print(f"Iteration {i+1}/{nIter} ", end="")
+        t = time.time()
+
+        decider = np.random.uniform()
+        if (i % 10000) == 0:
+            print(str(i) + ' samples taken')
+        if decider < 0.995:
+            variables = functions.diffusionMapSampler(variables, data)
+            dVect.append(variables.dIndu)
+            pVect.append(variables.P)
+        else:
+            variables = functions.diffusionPointSampler(variables, data)
+            dVect.append(variables.dIndu)
+            pVect.append(variables.P)
+        print(f"({time.time()-t:2f} s)")
     endTime = time.time()
         
     print(str(nIter) + " samples in " + str(endTime-startTime) + " seconds." )
     print("Index # of max probability: " + str(pVect.index(max(pVect))))
 
-    #Save Samples as CSV files
+    #Save Samples as h5 files and time
     startTime = time.time()
-    np.savetxt(str(nIter) + "samples(" + str(variables.covLambda) + " " + str(variables.covL) + ").csv", dVect, delimiter=", ", fmt="% f")
-    np.savetxt(str(nIter) + "probability(" + str(variables.covLambda) + " " + str(variables.covL) + ").csv", pVect, delimiter=", ", fmt="% f")
+    h5f = h5py.File(str(nIter) + '(' + str(variables.covLambda) + " " + str(variables.covL) + ').h5', 'w')
+    h5f.create_dataset('samples', data = dVect)
+    h5f.create_dataset('prob', data = pVect)
+    h5f.close()
     endTime = time.time()
     print("Time to save files: " + str(endTime-startTime))
-    
+
     return()
