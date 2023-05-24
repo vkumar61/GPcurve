@@ -28,7 +28,7 @@ def dataReader(path, num):
     dataVectIndex = dataVectIndex[::n]
     
     #put time step manually as unavailable from data file
-    deltaT = (1/30)/n
+    deltaT = (1/30)*n
 
     #print('We only used every ' + str(n) + 'th datapoint')
     return dataVect, dataVectIndex, deltaT

@@ -7,7 +7,7 @@ import os
 #hyper parameters
 covL = 45
 covLambda = 1
-nIter = 10000
+nIter = 1000
 print('Will attempt to run ' + str(nIter) + ' iterations with length parameter ' + str(covL))
 
 

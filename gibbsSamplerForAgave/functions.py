@@ -13,6 +13,10 @@ from math import lgamma
 def loggammapdf(x, shape, scale):
     return - shape*np.log(scale) - lgamma(shape) + (shape-1)*np.log(x) - x/scale
 
+@nb.njit(cache=True)
+def logNormpdf(diff, sigma):
+    return -np.log(np.abs(sigma))-0.5*(diff/sigma)**2
+
 #create a covariance matrix based on data at hand
 @nb.njit(cache=True)
 def covMat(coordinates1, coordinates2, covLambda, covL):
@@ -46,8 +50,6 @@ def initialization(variables, data, covLambda, covL):
     nInduY = variables.nInduY
     nFineX = variables.nFineX
     nFineY = variables.nFineY
-    variables.covLambda = covLambda
-    variables.covL = covL
     epsilon = variables.epsilon
     deltaT = data.deltaT
     dataX = trajectories[:,0]
@@ -56,6 +58,9 @@ def initialization(variables, data, covLambda, covL):
     minY = min(dataY)
     maxX = max(dataX)
     maxY = max(dataY)
+
+    #Establish Hyperparameters more accurately
+    covL = np.max([maxX-minX, maxY-minY])/25
 
     #define coordinates for Inducing points
     x = np.linspace(minX, maxX, nInduX)
@@ -105,9 +110,6 @@ def initialization(variables, data, covLambda, covL):
     dMleData = np.sum(diff*diff, axis = 1)/(2*deltaT)
     print('shape of cov matrix:' + str(np.shape(cInduData.T)))
     print('shape of mleData matrix:' + str(np.shape(dMleData)))
-    prediction = (dMleData @ cInduData.T)/((np.ones(np.shape(dMleData)) @ cInduData.T))
-    print('shape of inducingpoints' + str(np.shape(prediction)))
-    print(prediction)
 
     # Set up dData
     dData = cDataIndu @ dIndu
@@ -130,6 +132,8 @@ def initialization(variables, data, covLambda, covL):
     variables.dInduPrior = mle
     variables.cDataIndu = cDataIndu
     variables.dData = dData
+    variables.covLambda = covLambda
+    variables.covL = covL
 
     return variables
 
@@ -174,8 +178,9 @@ def diffusionMapSampler(variables, data):
         return prob
 
     # Propose new dIndu
-    dInduNew = dInduOld + np.random.randn(nIndu) @ chol * np.mean(dInduPrior) / 100
+    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * dInduPrior/100
     dDataNew = cDataIndu @ dInduNew
+
     # Make sure sampled diffusion vallues are all positive
     if np.any(dInduNew < 0):
         return variables
@@ -183,7 +188,7 @@ def diffusionMapSampler(variables, data):
     # Probability of old and new function
     pOld = P
     pNew = probability(dInduNew, dDataNew)
-    
+    print(pNew)
     # Acceptance value
     acc_prob = pNew - pOld
     if acc_prob > np.log(np.random.rand()):
@@ -198,11 +203,10 @@ def diffusionPointSampler(variables, data):
     
     # Define numba version
     @nb.jit(nopython=True, cache = True)
-    def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, P, dData):
+    def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, pOld, dDataOld):
         
         # Set up constants
         priorMean = dInduPrior*np.ones(nIndu)
-        propshape = 100
 
         # Calculate probabilities of induced samples
         def probability(dIndu_, dData_):
@@ -223,35 +227,71 @@ def diffusionPointSampler(variables, data):
 
             return prob
         
+        #initialize inverse space
+        alphaVect = cInduInduInv @ dInduOld
 
-        # Propose new dIndu by sampling random point
-        for pointIndex in range(len(dInduOld)):
+        #Counter for acceptances
+        accCounter = 0
 
-            # Propose new dIndu point
-            oldPoint = dInduOld[pointIndex]
-            newPoint = np.random.gamma(propshape, scale=oldPoint/propshape)
+        #Propose new dIndu by sampling random points in inverse space
+        for pointIndex in range(len(alphaVect)):
+
+            #Propose new alpha point
+            oldAlphaPoint = alphaVect[pointIndex]
+            alphaDiff = 0.01 * oldAlphaPoint * np.random.randn()
+            newAlphaPoint = oldAlphaPoint + alphaDiff
             
-            # Incorporate new point into dIndu
-            dInduNew = np.copy(dInduOld)
-            dInduNew[pointIndex] = newPoint
-            dDataNew = dData + cDataIndu[:,pointIndex] * (newPoint - oldPoint)
+            #Incorporate new point into dInduNew and dDataNew
+            dInduNew = dInduOld + cInduIndu[:, pointIndex] * alphaDiff
+            dDataNew = dDataOld + cInduData[pointIndex, :] * alphaDiff
             
-            # Probability of old and new function
-            pOld = P
+            #Probability of old and new function
+            pOld = pOld
             pNew = probability(dInduNew, dDataNew)
 
-            # Accept or reject
+            #Compute acceptance ratio
             acc_prob = (
                 pNew - pOld
-                + loggammapdf(oldPoint, propshape, scale=newPoint/propshape)
-                - loggammapdf(newPoint, propshape, scale=oldPoint/propshape)
-            )
+                +logNormpdf(diff = alphaDiff, sigma = 0.01 * newAlphaPoint)
+                -logNormpdf(diff = alphaDiff, sigma = 0.01 * oldAlphaPoint)
+                )
+            
+            #Accept or Reject
             if acc_prob > np.log(np.random.rand()):
+                accCounter += 1
                 dInduOld = dInduNew
-                dData = dDataNew
-                P = pNew
-        
-        return dInduOld, P
+                dDataOld = dDataNew
+                pOld = pNew
+
+        # #Propose new dIndu by sampling random point
+        # for pointIndex in range(len(dInduOld)):
+
+        #     #Propose new dIndu point
+        #     oldPoint = dInduOld[pointIndex]
+        #     newPoint = np.random.gamma(propshape, scale=oldPoint/propshape)
+            
+        #     #Incorporate new point into dIndu
+        #     dInduNew = np.copy(dInduOld)
+        #     dInduNew[pointIndex] = newPoint
+        #     dDataNew = dData + cDataIndu[:,pointIndex] * (newPoint - oldPoint)
+            
+        #     #Probability of old and new function
+        #     pOld = P
+        #     pNew = probability(dInduNew, dDataNew)
+
+        #     #Accept or reject
+        #     acc_prob = (
+        #         pNew - pOld
+        #         + loggammapdf(oldPoint, propshape, scale=newPoint/propshape)
+        #         - loggammapdf(newPoint, propshape, scale=oldPoint/propshape)
+        #     )
+        #     if acc_prob > np.log(np.random.rand()):
+        #         dInduOld = dInduNew
+        #         dData = dDataNew
+        #         P = pNew      
+
+        print(f'{accCounter} is the # of accepted samples') 
+        return dInduOld, pOld, dDataOld
     
     #necassary variables
     nIndu = variables.nInduX*variables.nInduY
@@ -270,9 +310,10 @@ def diffusionPointSampler(variables, data):
     dData = variables.dData
 
     # Run numba version
-    dIndu, P = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, P, dData)
+    dIndu, P , dData = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, P, dData)
     variables.dIndu = dIndu
     variables.P = P
+    variables.dData = dData
 
     return variables
 
@@ -320,6 +361,7 @@ def probPlot(pVect):
 
 #This function plots the mean of all dVect samples
 def meanPlot(variables, dVect, data):
+
     #necassary variables
     nFineX = variables.nFineX
     nFineY = variables.nFineY
@@ -348,6 +390,7 @@ def meanPlot(variables, dVect, data):
     return fig
 
 def plotThreeD(variables, dVect, data):
+
     #necassary variables
     nFineX = variables.nFineX
     nFineY = variables.nFineY

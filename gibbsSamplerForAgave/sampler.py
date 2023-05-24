@@ -44,7 +44,7 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
         decider = np.random.uniform()
         if (i % 10000) == 0:
             print(str(i) + ' samples taken')
-        if decider < 0.995:
+        if decider < 1:
             variables = functions.diffusionMapSampler(variables, data)
             dVect.append(variables.dIndu)
             pVect.append(variables.P)
