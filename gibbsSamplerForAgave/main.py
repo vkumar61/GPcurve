@@ -12,7 +12,7 @@ covL = 40
 covLambda = 1
 
 #number of samples to generate
-nIter = 10
+nIter = 1000
 print('Will attempt to run ' + str(nIter) + ' iterations with length parameter ' + str(covL))
 
 #load vectors from read csv File
@@ -27,8 +27,9 @@ print(
     + " data points"
 )
 
-#transform data to micrometers adjusting for pixel size
-dataVect = dataVect*97/1000
+#transform data to nanometers adjusting for pixel size
+dataVect = dataVect*97
+
 print(dataVect)
 #generate samples
 sampler.analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL)
