@@ -5,4 +5,4 @@
 
 module purge    
 module load anaconda/py3
-python main.py 0
+python main.py

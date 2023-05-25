@@ -29,7 +29,7 @@ def diffusion(x, y):
 #initial constants
 fieldOfView = [0, 20000, 0, 20000] #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
 averageTrajLength = 20     #mean length of each trajectory
-averageNumOfTraj = 7500   #mean for the number of trajectories as a multiple of 10
+averageNumOfTraj = 5000   #mean for the number of trajectories as a multiple of 10
 timestep = 1/30            #temporal resolution (microscope frequency) in Hz
 
 #The exact number of trajectories to be generated

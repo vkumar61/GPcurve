@@ -38,8 +38,8 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     
     startTime = time.time()
     for i in range(nIter):
-        #print(f"Iteration {i+1}/{nIter} ", end="")
-        #t = time.time()
+        print(f"Iteration {i+1}/{nIter} ", end="")
+        t = time.time()
 
         decider = np.random.uniform()
         if (i % 10000) == 0:
@@ -53,7 +53,7 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
             variables = functions.diffusionPointSampler(variables, data)
             dVect.append(variables.dIndu)
             pVect.append(variables.P)
-        #print(f"({time.time()-t:2f} s)")
+        print(f"({time.time()-t:2f} s)")
     endTime = time.time()
         
     print(str(nIter) + " samples in " + str(endTime-startTime) + " seconds." )
