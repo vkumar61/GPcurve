@@ -1,10 +1,10 @@
 '''
-When this file is run, it takes a given diffusion coefficient map, defined in the def diffusion(point),
+When this file is run, it takes a given diffusion coefficient map, defined in the def diffusion(x, y),
 and outputs randomized protien trajectories. The ground truth diffusion map is changed by changing the
 function inside of diffusion(point), where point = (x,y) is a set of coordinates. There are some other
 variables that the user may choose to tune, such as average trajectory length, field of view, etc. all 
 of those variables are at the begining of the code and commented conveniantly so the user can changed 
-conveniantly at initialization. Once all the variables are se the code simulates randomized trajectories
+conveniantly at initialization. Once all the variables are set the code simulates randomized trajectories
 using a random walk.
 '''
 
@@ -23,8 +23,7 @@ def saveFunction(function, file_path):
 
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
-    value = 1.5*(3+np.sin(x/75)+np.sin(y/75))
-    value = 25000
+    value = 50000 + 35000*(np.sin((x/10000)) + np.sin(y/2500) + np.sin((x+y)/5000) + np.sin(x*y/50000000))
     return value
 
 #initial constants

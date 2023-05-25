@@ -6,25 +6,16 @@ def dataReader(path, num):
     n = num
     
     #read datafile
-    with open(path) as inp:
-        tempData = [i.strip().split('\t') for i in inp]
 
-    #clean the data
-    cleanData = []
-    for i in tempData:
-        if i != ['']:
-            cleanData.append(i)
-    
-    #coordinates for trajectories
-    x = np.array([float(i[3]) for i in cleanData])
-    y = np.array([float(i[4]) for i in cleanData])
+    # Read the CSV file, considering the mentioned points
+    data = np.genfromtxt(path, delimiter=', ', skip_header=1)
 
-    #save organized dat in respective vectors
-    dataVect = np.vstack((x,y)).T
-    dataVectIndex = np.array([int(i[1]) for i in cleanData])
+    # Separate columns into individual arrays
+    dataVectIndex = data[:, 0]
+    dataVect = data[:, 1:]
     
-    #sub sample
-    dataVect = dataVect[::n]
+    #sub sample along with pixel size adjustment
+    dataVect = dataVect[::n]*1
     dataVectIndex = dataVectIndex[::n]
     
     #put time step manually as unavailable from data file

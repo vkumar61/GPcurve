@@ -25,8 +25,8 @@ PARAMETERS = {
     'dData': None,
 
     # Priors
-    'covLambda': 1,     #coefficient of covariance square exponential kernal (1 only used if hyper parameters on specified)
-    'covL': 20,         #lenghts parameter of covariance square exponential kernal (20 only used if hyper parameters on specified)
+    'covLambda': None,     #coefficient of covariance square exponential kernal (1 only used if hyper parameters on specified)
+    'covL': None,         #lenghts parameter of covariance square exponential kernal (20 only used if hyper parameters on specified)
     'dInduPrior': None, #Prior on Inducing point MAP (set to MLE in init)
 
 

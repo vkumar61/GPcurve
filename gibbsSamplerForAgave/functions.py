@@ -8,6 +8,12 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import numba as nb
 from math import lgamma
+from scipy.spatial import KDTree
+
+def find_closest_point_indices(target_point, points, k=20):
+    kdtree = KDTree(points)
+    distances, indices = kdtree.query(target_point, k=k)
+    return indices
 
 @nb.njit(cache=True)
 def loggammapdf(x, shape, scale):
@@ -58,9 +64,14 @@ def initialization(variables, data, covLambda, covL):
     minY = min(dataY)
     maxX = max(dataX)
     maxY = max(dataY)
+    nIndu = nInduX*nInduY
+    covL = variables.covL
 
-    #Establish Hyperparameters more accurately
-    covL = np.max([maxX-minX, maxY-minY])/25
+    #Establish Hyperparameters more accurately if not chosen by user
+    if covL == None:
+        covL = np.max([maxX-minX, maxY-minY]) * 0.1
+    if covLambda == None:
+        covLambda = 1
 
     #define coordinates for Inducing points
     x = np.linspace(minX, maxX, nInduX)
@@ -80,7 +91,7 @@ def initialization(variables, data, covLambda, covL):
 
     #Points of trajectory where learning is possible
     dataCoordinates = np.empty((0,2))
-    for i in range((nData-1)):
+    for i in range(nData-1):
         if (trajectoriesIndex[i] == trajectoriesIndex[i+1]):
             dataCoordinates = np.vstack((dataCoordinates, trajectories[i]))
 
@@ -107,9 +118,16 @@ def initialization(variables, data, covLambda, covL):
     
     #Potential MLE(for each inducing point based on the covariance kernal) to make initial guess significantly more accurate:
     diff = sampleCoordinates - dataCoordinates
-    dMleData = np.sum(diff*diff, axis = 1)/(2*deltaT)
+    dMleData = np.sum(diff*diff, axis = 1)/(4*deltaT)
     print('shape of cov matrix:' + str(np.shape(cInduData.T)))
     print('shape of mleData matrix:' + str(np.shape(dMleData)))
+
+    #loop through induncing points and make them the value of the MLE of the k nearest datapoints
+    k = np.floor(len(dMleData)/nIndu)
+    for i in range(nIndu):
+        closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
+        dIndu[i] = np.mean(dMleData[closest])
+
 
     # Set up dData
     dData = cDataIndu @ dIndu
@@ -129,7 +147,7 @@ def initialization(variables, data, covLambda, covL):
     variables.cInduInduInv = cInduInduInv
     variables.dIndu = dIndu
     variables.P = P
-    variables.dInduPrior = mle
+    variables.mle = mle
     variables.cDataIndu = cDataIndu
     variables.dData = dData
     variables.covLambda = covLambda
@@ -150,20 +168,20 @@ def diffusionMapSampler(variables, data):
     samples = variables.sampleCoordinates
     data = data.trajectories
     chol = variables.cInduInduChol
-    dInduPrior = variables.dInduPrior
+    mle = variables.mle
     dInduOld = variables.dIndu
     cDataIndu = variables.cDataIndu
     P = variables.P
 
     # Set constants
-    priorMean = dInduPrior*np.ones(nIndu)
+    priorMean = mle*np.ones(nIndu)
 
     # Define probability of inducing points
     def probability(dIndu_, dData_):
 
         # Prior
         diff = dIndu_ - priorMean
-        prior =  (-1/2)*(diff.T @ (cInduInduInv @ diff))
+        prior =  -0.5*(diff.T @ (cInduInduInv @ diff))
         
         #Likelihood of that data
         lhood = np.sum(
@@ -178,17 +196,18 @@ def diffusionMapSampler(variables, data):
         return prob
 
     # Propose new dIndu
-    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * dInduPrior/100
+    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * mle * 0.01
     dDataNew = cDataIndu @ dInduNew
 
     # Make sure sampled diffusion vallues are all positive
-    if np.any(dInduNew < 0):
+    if np.any(dDataNew < 0):
         return variables
 
     # Probability of old and new function
     pOld = P
     pNew = probability(dInduNew, dDataNew)
-    print(pNew)
+    #print(pNew)
+    
     # Acceptance value
     acc_prob = pNew - pOld
     if acc_prob > np.log(np.random.rand()):
@@ -203,25 +222,25 @@ def diffusionPointSampler(variables, data):
     
     # Define numba version
     @nb.jit(nopython=True, cache = True)
-    def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, pOld, dDataOld):
+    def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, mle, dInduOld, pOld, dDataOld):
         
         # Set up constants
-        priorMean = dInduPrior*np.ones(nIndu)
+        priorMean = mle*np.ones(nIndu)
 
         # Calculate probabilities of induced samples
         def probability(dIndu_, dData_):
             
             # Prior
             diff = dIndu_ - priorMean
-            prior = (-1/2)*(diff.T @ (cInduInduInv @ diff))
+            prior = -0.5*(diff.T @ (cInduInduInv @ diff))
             
             #Likelihood of that data
             lhood = 0
             for i in range(samples.shape[0]):
                 for j in range(samples.shape[1]):
                     lhood += (
-                        -.5 * (samples[i, j] - means[i, j])**2 / (2*dData_[j]*deltaT)
-                        - .5 * np.log(2*np.pi*2*dData_[j]*deltaT)
+                        -.5 * (samples[i, j] - means[i, j])**2 / (2*dData_[i]*deltaT)
+                        -.5 * np.log(2*np.pi*2*dData_[i]*deltaT)
                     )
             prob = lhood + prior
 
@@ -244,24 +263,27 @@ def diffusionPointSampler(variables, data):
             #Incorporate new point into dInduNew and dDataNew
             dInduNew = dInduOld + cInduIndu[:, pointIndex] * alphaDiff
             dDataNew = dDataOld + cInduData[pointIndex, :] * alphaDiff
-            
-            #Probability of old and new function
-            pOld = pOld
-            pNew = probability(dInduNew, dDataNew)
 
-            #Compute acceptance ratio
-            acc_prob = (
-                pNew - pOld
-                +logNormpdf(diff = alphaDiff, sigma = 0.01 * newAlphaPoint)
-                -logNormpdf(diff = alphaDiff, sigma = 0.01 * oldAlphaPoint)
-                )
-            
-            #Accept or Reject
-            if acc_prob > np.log(np.random.rand()):
-                accCounter += 1
-                dInduOld = dInduNew
-                dDataOld = dDataNew
-                pOld = pNew
+            # Make sure sampled diffusion vallues are all positive
+            if np.all(dDataNew > 0):
+                    
+                #Probability of old and new function
+                pOld = pOld
+                pNew = probability(dInduNew, dDataNew)
+
+                #Compute acceptance ratio
+                acc_prob = (
+                    pNew - pOld
+                    +logNormpdf(diff = alphaDiff, sigma = 0.01 * newAlphaPoint)
+                    -logNormpdf(diff = alphaDiff, sigma = 0.01 * oldAlphaPoint)
+                    )
+                
+                #Accept or Reject
+                if acc_prob > np.log(np.random.rand()):
+                    accCounter += 1
+                    dInduOld = dInduNew
+                    dDataOld = dDataNew
+                    pOld = pNew
 
         # #Propose new dIndu by sampling random point
         # for pointIndex in range(len(dInduOld)):
@@ -303,14 +325,14 @@ def diffusionPointSampler(variables, data):
     samples = variables.sampleCoordinates
     data = data.trajectories
     chol = variables.cInduInduChol
-    dInduPrior = variables.dInduPrior
+    mle = variables.mle
     dInduOld = variables.dIndu
     cDataIndu = variables.cDataIndu
     P = variables.P
     dData = variables.dData
 
     # Run numba version
-    dIndu, P , dData = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduPrior, dInduOld, P, dData)
+    dIndu, P , dData = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, mle, dInduOld, P, dData)
     variables.dIndu = dIndu
     variables.P = P
     variables.dData = dData
