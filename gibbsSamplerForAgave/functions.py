@@ -71,7 +71,7 @@ def initialization(variables, data, covLambda, covL):
     if covL == None:
         covL = np.max([maxX-minX, maxY-minY]) * 0.1
     if covLambda == None:
-        covLambda = 1
+        covLambda = 10
 
     #define coordinates for Inducing points
     x = np.linspace(minX, maxX, nInduX)
@@ -197,7 +197,7 @@ def diffusionMapSampler(variables, data):
         return prob
 
     # Propose new dIndu
-    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * mle * 0.0001
+    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * mle * 0.001
     dDataNew = cDataIndu @ dInduNew
 
     # Make sure sampled diffusion values are all positivelhood
