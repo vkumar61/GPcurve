@@ -36,7 +36,7 @@ def covMat(coordinates1, coordinates2, covLambda, covL):
             #Calculate distance between points
             dist = np.sqrt((coordinates1[i,0] - coordinates2[j,0])**2 + (coordinates1[i,1] - coordinates2[j,1])**2)
             #Determine each element of covariance matrix
-            C[i][j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
+            C[i, j] = (covLambda**2)*(np.exp(((-1)*((dist)**2))/(covL**2)))
 
     #Return Covariance Matrix
     return C
@@ -67,12 +67,6 @@ def initialization(variables, data, covLambda, covL):
     nIndu = nInduX*nInduY
     covL = variables.covL
 
-    #Establish Hyperparameters more accurately if not chosen by user
-    if covL == None:
-        covL = np.max([maxX-minX, maxY-minY]) * 0.1
-    if covLambda == None:
-        covLambda = 10
-
     #define coordinates for Inducing points
     x = np.linspace(minX, maxX, nInduX)
     y = np.linspace(minY, maxY, nInduY)
@@ -101,14 +95,6 @@ def initialization(variables, data, covLambda, covL):
         if (trajectoriesIndex[i] == trajectoriesIndex[i-1]):
             sampleCoordinates = np.vstack((sampleCoordinates, trajectories[i]))
 
-    #detrmine Covarince matrices
-    cInduIndu = covMat(induCoordinates, induCoordinates, covLambda, covL) + 100*np.eye(nIndu)
-    cInduData = covMat(induCoordinates, dataCoordinates, covLambda, covL)
-    cInduFine = covMat(induCoordinates, fineCoordinates, covLambda, covL)
-    cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.eye(nInduX*nInduY))
-    cDataIndu = cInduData.T @ cInduInduInv
-    cInduInduChol = np.linalg.cholesky(cInduIndu + np.eye(nInduX*nInduY)*epsilon)
-
     #Initial Guess with MLE
     diff = sampleCoordinates - dataCoordinates
     num = np.sum(diff * diff)
@@ -119,14 +105,28 @@ def initialization(variables, data, covLambda, covL):
     #Potential MLE(for each inducing point based on the covariance kernal) to make initial guess significantly more accurate:
     diff = sampleCoordinates - dataCoordinates
     dMleData = np.sum(diff*diff, axis = 1)/(4*deltaT)
+
+    #Establish Hyperparameters more accurately if not chosen by user
+    if covL == None:
+        covL = np.max([maxX-minX, maxY-minY]) * 0.1
+    if covLambda == None:
+        covLambda = .5 * mle
+
+    #detrmine Covarince matrices
+    cInduIndu = covMat(induCoordinates, induCoordinates, covLambda, covL)
+    cInduData = covMat(induCoordinates, dataCoordinates, covLambda, covL)
+    cInduFine = covMat(induCoordinates, fineCoordinates, covLambda, covL)
+    cInduInduInv = np.linalg.pinv(cInduIndu)
+    cDataIndu = cInduData.T @ cInduInduInv
+    cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.eye(nInduX*nInduY))
     print('shape of cov matrix:' + str(np.shape(cInduData.T)))
     print('shape of mleData matrix:' + str(np.shape(dMleData)))
 
     #loop through induncing points and make them the value of the MLE of the k nearest datapoints
-    k = np.floor(len(dMleData)/nIndu)
-    for i in range(nIndu):
-        closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
-        dIndu[i] = np.mean(dMleData[closest])
+    # k = np.floor(len(dMleData)/nIndu)
+    # for i in range(nIndu):
+    #     closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
+    #     dIndu[i] = np.mean(dMleData[closest])
 
     # Set up dData
     dData = cDataIndu @ dIndu
@@ -173,6 +173,7 @@ def diffusionMapSampler(variables, data):
     P = variables.P
     mle = variables.mle
     priorMean = variables.priorMean
+    epsilon = variables.epsilon
 
     # Set constants
     
@@ -182,7 +183,10 @@ def diffusionMapSampler(variables, data):
 
         # Prior
         diff = dIndu_ - priorMean
-        prior =  -0.5*(diff.T @ (cInduInduInv @ diff))
+        prior =  (
+            -0.5*(diff.T @ (cInduInduInv @ diff))
+            # -0.5*np.log(np.linalg.slogdet(cInduIndu+np.eye(nIndu)*epsilon)[1])
+        )
         
         #Likelihood of that data
         lhood = np.sum(
@@ -197,7 +201,7 @@ def diffusionMapSampler(variables, data):
         return prob
 
     # Propose new dIndu
-    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * mle * 0.001
+    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * 0.001
     dDataNew = cDataIndu @ dInduNew
 
     # Make sure sampled diffusion values are all positivelhood

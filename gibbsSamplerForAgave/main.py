@@ -17,7 +17,7 @@ print('Will attempt to run ' + str(nIter) + ' iterations with length parameter '
 
 #load vectors from read csv File
 datapath = 'C:/Users/vkuma/Research/LearningDiffusionMaps/SyntheticData/syntheticData_20230524_181523/data.csv'
-# datapath = os.environ["DATAPATH"] + "Diffusion/movie001.txt"
+datapath = os.environ["DATAPATH"] + "Diffusion/data.csv"
 dataVect, dataVectIndex, deltaT = readData.dataReader(datapath, 1)
 
 print(
