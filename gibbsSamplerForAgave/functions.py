@@ -102,7 +102,7 @@ def initialization(variables, data, covLambda, covL):
             sampleCoordinates = np.vstack((sampleCoordinates, trajectories[i]))
 
     #detrmine Covarince matrices
-    cInduIndu = covMat(induCoordinates, induCoordinates, covLambda, covL)
+    cInduIndu = covMat(induCoordinates, induCoordinates, covLambda, covL) + 100*np.eye(nIndu)
     cInduData = covMat(induCoordinates, dataCoordinates, covLambda, covL)
     cInduFine = covMat(induCoordinates, fineCoordinates, covLambda, covL)
     cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.eye(nInduX*nInduY))
@@ -128,7 +128,6 @@ def initialization(variables, data, covLambda, covL):
         closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
         dIndu[i] = np.mean(dMleData[closest])
 
-
     # Set up dData
     dData = cDataIndu @ dIndu
 
@@ -148,6 +147,7 @@ def initialization(variables, data, covLambda, covL):
     variables.dIndu = dIndu
     variables.P = P
     variables.mle = mle
+    variables.priorMean = dIndu
     variables.cDataIndu = cDataIndu
     variables.dData = dData
     variables.covLambda = covLambda
@@ -168,13 +168,14 @@ def diffusionMapSampler(variables, data):
     samples = variables.sampleCoordinates
     data = data.trajectories
     chol = variables.cInduInduChol
-    mle = variables.mle
     dInduOld = variables.dIndu
     cDataIndu = variables.cDataIndu
     P = variables.P
+    mle = variables.mle
+    priorMean = variables.priorMean
 
     # Set constants
-    priorMean = mle*np.ones(nIndu)
+    
 
     # Define probability of inducing points
     def probability(dIndu_, dData_):
@@ -196,11 +197,11 @@ def diffusionMapSampler(variables, data):
         return prob
 
     # Propose new dIndu
-    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * mle * 0.01
+    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * mle * 0.0001
     dDataNew = cDataIndu @ dInduNew
 
-    # Make sure sampled diffusion vallues are all positive
-    if np.any(dDataNew < 0):
+    # Make sure sampled diffusion values are all positivelhood
+    if (np.any(dDataNew < 0) or np.any(dInduNew < 0)):
         return variables
 
     # Probability of old and new function
@@ -222,10 +223,7 @@ def diffusionPointSampler(variables, data):
     
     # Define numba version
     @nb.jit(nopython=True, cache = True)
-    def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, mle, dInduOld, pOld, dDataOld):
-        
-        # Set up constants
-        priorMean = mle*np.ones(nIndu)
+    def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, pOld, dDataOld, priorMean):
 
         # Calculate probabilities of induced samples
         def probability(dIndu_, dData_):
@@ -265,7 +263,7 @@ def diffusionPointSampler(variables, data):
             dDataNew = dDataOld + cInduData[pointIndex, :] * alphaDiff
 
             # Make sure sampled diffusion vallues are all positive
-            if np.all(dDataNew > 0):
+            if (np.all(dDataNew > 0) and np.all(dInduNew > 0)):
                     
                 #Probability of old and new function
                 pOld = pOld
@@ -325,14 +323,14 @@ def diffusionPointSampler(variables, data):
     samples = variables.sampleCoordinates
     data = data.trajectories
     chol = variables.cInduInduChol
-    mle = variables.mle
     dInduOld = variables.dIndu
     cDataIndu = variables.cDataIndu
     P = variables.P
     dData = variables.dData
+    priorMean = variables.priorMean
 
     # Run numba version
-    dIndu, P , dData = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, mle, dInduOld, P, dData)
+    dIndu, P , dData = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean)
     variables.dIndu = dIndu
     variables.P = P
     variables.dData = dData
