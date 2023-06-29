@@ -95,8 +95,6 @@ def initialization(variables, data, covLambda, covL):
     num = np.sum(diff * diff)
     den = 4*deltaT*len(diff)
     mle = num/den
-    dIndu = mle * np.ones(nIndu)
-    priorMean = dIndu.copy()
 
     #Estimate Hyperparameters if not chosen by user
     if covL == None:
@@ -105,9 +103,9 @@ def initialization(variables, data, covLambda, covL):
         covLambda = mle/10
 
     #define coordinates for Inducing points
-    x = np.linspace(minX, maxX, nInduX)
-    y = np.linspace(minY, maxY, nInduY)
-    xTemp, yTemp = np.meshgrid(x, y)
+    xIndu = np.linspace(minX-covL, maxX+covL, nInduX)
+    yIndu = np.linspace(minY-covL, maxY+covL, nInduY)
+    xTemp, yTemp = np.meshgrid(xIndu, yIndu)
     X = np.reshape(xTemp, -1)
     Y = np.reshape(yTemp, -1)
     induCoordinates = np.vstack((X, Y)).T
@@ -120,17 +118,38 @@ def initialization(variables, data, covLambda, covL):
     Y = np.reshape(yTemp, -1)
     fineCoordinates = np.vstack((X, Y)).T
     
-    # Define the number of clusters
-    num_clusters = 2500
+    remove1 = []
+    for i in xIndu:
+        for j in induCoordinates[np.where(induCoordinates[:,0] == i)]:
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+                remove1.append(j)
+            else:
+                break
+    for i in yIndu:
+        for j in induCoordinates[np.where(induCoordinates[:,1] == i)]:
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+                remove1.append(j)
+            else:
+                break
+    for i in xIndu:
+        for j in reversed(induCoordinates[np.where(induCoordinates[:,0] == i)]):
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+                remove1.append(j)
+            else:
+                break
+    for i in yIndu:
+        for j in reversed(induCoordinates[np.where(induCoordinates[:,1] == i)]):
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+                remove1.append(j)
+            else:
+                break
+    indicies = []
+    for i in remove1:    
+        indicies.append(np.where(np.all(induCoordinates==i,axis=1))[0][0])
+    induCoordinates = np.delete(induCoordinates, indicies, axis = 0)
 
-    X = dataCoordinates
-
-    # Perform Mini-Batch K-means clustering
-    mbkmeans = MiniBatchKMeans(n_clusters=num_clusters, batch_size=10000)
-    mbkmeans.fit(X)
-
-    # Get the cluster centers
-    induCoordinates = mbkmeans.cluster_centers_
+    dIndu = mle * np.ones(len(induCoordinates))
+    priorMean = dIndu.copy()
 
     #Potential MLE(for each inducing point based on the covariance kernal) to make initial guess significantly more accurate:
     diff = sampleCoordinates - dataCoordinates
@@ -142,7 +161,7 @@ def initialization(variables, data, covLambda, covL):
     cInduFine = covMat(induCoordinates, fineCoordinates, covLambda, covL)
     cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(len(dIndu)))
     cDataIndu = cInduData.T @ cInduInduInv
-    cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(nInduX*nInduY))
+    cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(len(dIndu)))
     print('shape of cov matrix:' + str(np.shape(cInduData.T)))
     print('shape of mleData matrix:' + str(np.shape(dMleData)))
 
@@ -206,7 +225,6 @@ def initialization(variables, data, covLambda, covL):
 def diffusionMapSampler(variables, data):
 
     # Extract variables
-    nIndu = variables.nInduX*variables.nInduY
     cInduIndu = variables.cInduIndu
     cInduData = variables.cInduData
     cInduInduInv = variables.cInduInduInv
@@ -220,7 +238,8 @@ def diffusionMapSampler(variables, data):
     P = variables.P
     mle = variables.mle
     priorMean = variables.priorMean
-    epsilon = variables.epsilon    
+    epsilon = variables.epsilon
+    nIndu = len(dInduOld) 
 
     # Define probability of inducing points
     def probability(dIndu_, dData_):
@@ -351,7 +370,6 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
 def diffusionPointSampler(variables, data):
     
     #necassary variables
-    nIndu = variables.nInduX*variables.nInduY
     cInduIndu = variables.cInduIndu
     cInduData = variables.cInduData
     cInduInduInv = variables.cInduInduInv
@@ -367,6 +385,7 @@ def diffusionPointSampler(variables, data):
     priorMean = variables.priorMean
     covLambda = variables.covLambda
     epsilon = variables.epsilon
+    nIndu = len(dInduOld)
     
     # Run numba version
     dIndu, P , dData, dVect, pVect = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon)

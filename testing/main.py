@@ -11,7 +11,7 @@ covL = None
 covLambda = None
 
 #number of samples to generate
-nIter = 200
+nIter = 10
 print('Will attempt to run ' + str(nIter) + ' iterations with length parameter ' + str(covL))
 
 # load real data from csv File

@@ -137,7 +137,7 @@ def initialization(variables, data, covLambda, covL):
 def diffusionMapSampler(variables, data):
 
     # Extract variables
-    nIndu = variables.nInduX*variables.nInduY
+    nIndu = len(variables.d)
     cInduIndu = variables.cInduIndu
     cInduData = variables.cInduData
     cInduInduInv = variables.cInduInduInv
