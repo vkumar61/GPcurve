@@ -165,14 +165,14 @@ def initialization(variables, data, covLambda, covL):
     print('shape of mleData matrix:' + str(np.shape(dMleData)))
 
     #loop through induncing points and make them the value of the MLE of the k nearest datapoints
-    k = np.floor(len(dMleData)/len(dIndu))
-    for i in range(len(dIndu)):
-        closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
-        dIndu[i] = np.mean(dMleData[closest])
+    #k = np.floor(len(dMleData)/len(dIndu))
+    #for i in range(len(dIndu)):
+    #    closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
+    #    dIndu[i] = np.mean(dMleData[closest])
 
     # Set up dData and dIndu smoothed out
-    for i in range(len(dIndu)):
-        dIndu[i] = (dIndu @ cInduIndu[i])/np.sum(cInduIndu[i])
+    #for i in range(len(dIndu)):
+    #    dIndu[i] = (dIndu @ cInduIndu[i])/np.sum(cInduIndu[i])
 
 
     dData = cDataIndu @ dIndu

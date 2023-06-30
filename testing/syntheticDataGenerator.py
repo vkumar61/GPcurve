@@ -82,7 +82,7 @@ biasRegions = [
 # Generate data with biased initialization
 for i in range(1, nTraj + 1):
     # Sample a region based on the bias
-    if np.random.rand() <= 0.98:  # 90% chance of sampling the biased region
+    if np.random.rand() <= 0.995:  # 90% chance of sampling the biased region
         regionIndex = np.random.choice(len(biasRegions))
         region = biasRegions[regionIndex]
 
@@ -117,7 +117,7 @@ for i in range(1, nTraj + 1):
             xMin = region[0]
             xMax = region[1] - regionSize * (region[1] - region[0])
             yMin = region[2]
-            yMax = fieldOfView[3]
+            yMax = region[2] - regionSize * (region[3] - region[2])
 
         xPrev = np.random.uniform(xMin, xMax)
         yPrev = np.random.uniform(yMin, yMax)

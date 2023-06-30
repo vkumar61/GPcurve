@@ -36,7 +36,7 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     pVect = []
     pVect.append(variables.P)
     
-    variables.epsilon = 1
+    variables.epsilon = 0.25
     const = 0.5
     startTime = time.time()
     for i in range(nIter):
