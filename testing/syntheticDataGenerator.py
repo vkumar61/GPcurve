@@ -26,7 +26,7 @@ def saveFunction(function, file_path):
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
     value = 50000 + 35000*(np.sin((x/10000)) + np.sin(y/2500) + np.sin((x+y)/5000) + np.sin(x*y/50000000)) + 75000*np.exp(-((x-10000)**2+(y-7500)**2)/10000000)
-    return value
+    return value/2
 
 #initial constants
 fieldOfView = [0, 20000, 0, 20000] #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
@@ -70,13 +70,65 @@ plt.show()
 tracker = 0
 flag = False
 
-for i in range(1, nTraj+1):
-    #initialinitialize positions
-    xPrev = np.random.uniform(fieldOfView[0], fieldOfView[1])
-    yPrev = np.random.uniform(fieldOfView[2], fieldOfView[3])
+# Define the biased regions as four rectangles and a square
+biasWidth = (fieldOfView[1] - fieldOfView[0]) / 9  # Adjust the width of the rectangles as desired
+biasRegions = [
+    [fieldOfView[0] + biasWidth, fieldOfView[0] + 4 * biasWidth, fieldOfView[2], fieldOfView[3]],  # Left rectangle
+    [fieldOfView[0] + 2 * biasWidth, fieldOfView[0] + 6 * biasWidth, fieldOfView[2], fieldOfView[3]],  # Middle rectangle
+    [fieldOfView[0] + 5 * biasWidth, fieldOfView[0] + 7 * biasWidth, fieldOfView[2], fieldOfView[3]],  # Right rectangle
+    [fieldOfView[0], fieldOfView[0] + 3 * biasWidth, fieldOfView[2], fieldOfView[2] + 3 * biasWidth]  # Bottom-left square
+]
+
+# Generate data with biased initialization
+for i in range(1, nTraj + 1):
+    # Sample a region based on the bias
+    if np.random.rand() <= 0.98:  # 90% chance of sampling the biased region
+        regionIndex = np.random.choice(len(biasRegions))
+        region = biasRegions[regionIndex]
+
+        # Adjust the height of the region
+        if regionIndex == 0:  # Left rectangle
+            regionHeight = np.random.uniform(0.1, 0.5)  # Adjust the range of height as desired
+            regionWidth = np.random.uniform(0.5, 1)  # Adjust the range of height as desired
+            # Initialize positions within the selected region
+            xMin = region[0] + (region[1] - region[0]) * (1 - regionWidth) / 2
+            xMax = region[1] - (region[1] - region[0]) * (1 - regionWidth) / 2
+            yMin = region[2] + (region[3] - region[2]) * (1 - regionHeight) / 2
+            yMax = region[3] - (region[3] - region[2]) * (1 - regionHeight) / 2
+
+        elif regionIndex == 1:
+            regionHeight = np.random.uniform(0.3, 1)  # Adjust the range of height as desired
+            regionWidth = np.random.uniform(0.5, 1)  # Adjust the range of height as desired
+            # Initialize positions within the selected region
+            xMin = region[0] + (region[1] - region[0]) * (1 - regionWidth) / 2
+            xMax = region[1] - (region[1] - region[0]) * (1 - regionWidth) / 2
+            yMin = region[2] + (region[3] - region[2]) * (1 - regionHeight) / 2
+            yMax = region[3] - (region[3] - region[2]) * (1 - regionHeight) / 2
+        elif regionIndex == 2:
+            regionHeight = np.random.uniform(0.1, 0.7)  # Adjust the range of height as desired
+            regionWidth = np.random.uniform(0.5, 1)  # Adjust the range of height as desired
+            # Initialize positions within the selected region
+            xMin = region[0] + (region[1] - region[0]) * (1 - regionWidth) / 2
+            xMax = region[1] - (region[1] - region[0]) * (1 - regionWidth) / 2
+            yMin = region[2] + (region[3] - region[2]) * (1 - regionHeight) / 2
+            yMax = region[3] - (region[3] - region[2]) * (1 - regionHeight) / 2
+        else:  # Bottom-left square
+            regionSize = np.random.uniform(0, 0.1)  # Adjust the size of the square as desired
+            xMin = region[0]
+            xMax = region[1] - regionSize * (region[1] - region[0])
+            yMin = region[2]
+            yMax = fieldOfView[3]
+
+        xPrev = np.random.uniform(xMin, xMax)
+        yPrev = np.random.uniform(yMin, yMax)
+    else:
+        # Initialize positions randomly in the entire field of view
+        xPrev = np.random.uniform(fieldOfView[0], fieldOfView[1])
+        yPrev = np.random.uniform(fieldOfView[2], fieldOfView[3])
+
     xVect.append(xPrev)
     yVect.append(yPrev)
-    particleIndex.append(i+tracker)
+    particleIndex.append(i + tracker)
 
 
     #sample trajectory length from geometric with mean 20

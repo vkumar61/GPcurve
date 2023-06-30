@@ -9,7 +9,6 @@ from matplotlib import cm
 import numba as nb
 from math import lgamma
 from scipy.spatial import KDTree
-from sklearn.cluster import MiniBatchKMeans
 
 def find_closest_point_indices(target_point, points, k=20):
     kdtree = KDTree(points)
@@ -24,7 +23,7 @@ def loggammapdf(x, shape, scale):
 def logNormpdf(diff, sigma):
     return -np.log(np.abs(sigma))-0.5*(diff/sigma)**2
 
-@nb.njit(nopython=True)
+@nb.njit(cache=True)
 def indexShuffler(length):
     indices = np.arange(length)
     for i in range(length):
@@ -166,13 +165,16 @@ def initialization(variables, data, covLambda, covL):
     print('shape of mleData matrix:' + str(np.shape(dMleData)))
 
     #loop through induncing points and make them the value of the MLE of the k nearest datapoints
-    #k = np.floor(len(dMleData)/len(dIndu))
-    #for i in range(nIndu):
-    #    closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
-    #    dIndu[i] = np.mean(dMleData[closest])
+    k = np.floor(len(dMleData)/len(dIndu))
+    for i in range(len(dIndu)):
+        closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
+        dIndu[i] = np.mean(dMleData[closest])
 
     # Set up dData and dIndu smoothed out
-    # dIndu = cInduInduChol@dIndu/np.max(dIndu)
+    for i in range(len(dIndu)):
+        dIndu[i] = (dIndu @ cInduIndu[i])/np.sum(cInduIndu[i])
+
+
     dData = cDataIndu @ dIndu
     
     if np.any(dData < 0):
