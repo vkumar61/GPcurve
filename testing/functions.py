@@ -13,19 +13,12 @@ from scipy.spatial import KDTree
 #setseed
 np.random.seed(42)
 
-def find_closest_point_indices(target_point, points, k=20):
-    kdtree = KDTree(points)
-    distances, indices = kdtree.query(target_point, k=k)
-    return indices
-
-@nb.njit(cache=True)
-def loggammapdf(x, shape, scale):
-    return - shape*np.log(scale) - lgamma(shape) + (shape-1)*np.log(x) - x/scale
-
+#function that calculates logpdf of Normal distribution asumming n=1 and assuming normalization gets subtrcted
 @nb.njit(cache=True)
 def logNormpdf(diff, sigma):
     return -np.log(np.abs(sigma))-0.5*(diff/sigma)**2
 
+#function that randomizes index sequence for point sampler
 @nb.njit(cache=True)
 def indexShuffler(length):
     indices = np.arange(length)
@@ -33,7 +26,6 @@ def indexShuffler(length):
         j = int(np.random.random() * (length - i)) + i
         indices[i], indices[j] = indices[j], indices[i]
     return indices
-
 
 #create a covariance matrix based on data at hand
 @nb.njit(cache=True)
@@ -120,6 +112,7 @@ def initialization(variables, data, covLambda, covL):
     Y = np.reshape(yTemp, -1)
     fineCoordinates = np.vstack((X, Y)).T
     
+    #find the inducing points that are on the outside of grid far from data
     remove1 = []
     for i in xIndu:
         for j in induCoordinates[np.where(induCoordinates[:,0] == i)]:
@@ -145,17 +138,16 @@ def initialization(variables, data, covLambda, covL):
                 remove1.append(j)
             else:
                 break
+
+    #remove the inducing points not near data
     indicies = []
     for i in remove1:    
         indicies.append(np.where(np.all(induCoordinates==i,axis=1))[0][0])
     induCoordinates = np.delete(induCoordinates, indicies, axis = 0)
 
+    #set up initial sample and mean of prior
     dIndu = mle * np.ones(len(induCoordinates))
     priorMean = dIndu.copy()
-
-    #Potential MLE(for each inducing point based on the covariance kernal) to make initial guess significantly more accurate:
-    diff = sampleCoordinates - dataCoordinates
-    dMleData = np.sum(diff*diff, axis = 1)/(4*deltaT)
 
     #determine Covarince matrices
     cInduIndu = covMat(induCoordinates, induCoordinates, covLambda, covL)
@@ -164,19 +156,6 @@ def initialization(variables, data, covLambda, covL):
     cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(len(dIndu)))
     cDataIndu = cInduData.T @ cInduInduInv
     cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(len(dIndu)))
-    print('shape of cov matrix:' + str(np.shape(cInduData.T)))
-    print('shape of mleData matrix:' + str(np.shape(dMleData)))
-
-    #loop through induncing points and make them the value of the MLE of the k nearest datapoints
-    #k = np.floor(len(dMleData)/len(dIndu))
-    #for i in range(len(dIndu)):
-    #    closest = find_closest_point_indices(induCoordinates[i], dataCoordinates, k=k)
-    #    dIndu[i] = np.mean(dMleData[closest])
-
-    # Set up dData and dIndu smoothed out
-    #for i in range(len(dIndu)):
-    #    dIndu[i] = (dIndu @ cInduIndu[i])/np.sum(cInduIndu[i])
-
 
     dData = cDataIndu @ dIndu
     
@@ -249,11 +228,10 @@ def diffusionMapSampler(variables, data):
     # Define probability of inducing points
     def probability(dIndu_, dData_):
 
-        # Prior
+        # Prior ignoring normalization
         diff = dIndu_ - priorMean
         prior =  (
             -0.5*(diff.T @ (cInduInduInv @ diff))
-            # -0.5*np.log(np.linalg.slogdet(cInduIndu+np.eye(nIndu)*epsilon)[1])
         )
         
         #Likelihood of that data
@@ -280,7 +258,6 @@ def diffusionMapSampler(variables, data):
     # Probability of old and new function
     pOld = P
     pNew = probability(dInduNew, dDataNew)
-    #print(pNew)
     
     # Acceptance value
     acc_prob = pNew - pOld
@@ -300,7 +277,7 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
     # Calculate probabilities of induced samples
     def probability(dIndu_, dData_):
         
-        # Prior
+        # Prior ignoring normalization
         diff = dIndu_ - priorMean
         prior = -0.5*(diff.T @ (cInduInduInv @ diff))
         
