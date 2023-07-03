@@ -15,14 +15,14 @@ covL = None
 covLambda = None
 
 #number of samples to generate
-nIter = 100
+nIter = 10000
 
 # load real data from csv File
 dataPath = os.path.join(cwd, 'Data', 'SyntheticData', 'syntheticData_20230630_135158', 'data.csv')
 dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath, 1)
 
-#transform data to nanometers adjusting for pixel size
-dataVect = dataVect*97
+#Make sure to transform data to nanometers adjusting for pixel size etc
+#dataVect = dataVect*97
 
 print(
     'Data was read safely and there are '
