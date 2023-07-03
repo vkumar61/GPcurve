@@ -33,6 +33,7 @@ print(
 )
 
 print(dataVect)
+
 #generate samples
 sampler.analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL)
 print(deltaT)

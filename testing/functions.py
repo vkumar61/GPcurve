@@ -1,14 +1,9 @@
-#from cProfile import label
-#from statistics import mode
-from ctypes import pointer
 import numpy as np
 from types import SimpleNamespace
 from scipy import stats
 import matplotlib.pyplot as plt
 from matplotlib import cm
 import numba as nb
-from math import lgamma
-from scipy.spatial import KDTree
 
 #setseed
 np.random.seed(42)
