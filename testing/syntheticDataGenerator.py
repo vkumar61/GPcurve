@@ -8,7 +8,7 @@ conveniantly at initialization. Once all the variables are set the code simulate
 using a random walk.
 '''
 
-#Necassary imports
+#Necessary imports
 import numpy as np
 import inspect
 import os
@@ -26,7 +26,7 @@ def saveFunction(function, file_path):
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
     value = 50000 + 35000*(np.sin((x/10000)) + np.sin(y/2500) + np.sin((x+y)/5000) + np.sin(x*y/50000000)) + 75000*np.exp(-((x-10000)**2+(y-7500)**2)/10000000)
-    return value/2
+    return np.abs(value/2)
 
 #initial constants
 fieldOfView = [0, 20000, 0, 20000] #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
@@ -35,7 +35,7 @@ averageNumOfTraj = 8000   #mean for the number of trajectories as a multiple of 
 timestep = 1/30            #temporal resolution (microscope frequency) in Hz
 
 #The exact number of trajectories to be generated
-#Note: this might not match the final trajectory count due to particle that leave field of view and return
+#Note: this might not match the final trajectory count due to particles that leave field of view and return
 nTraj = int(averageNumOfTraj + (np.random.binomial(2*averageNumOfTraj/10, 0.5) - averageNumOfTraj/10))
 
 #empty lists that will save data
@@ -70,6 +70,9 @@ plt.show()
 tracker = 0
 flag = False
 
+# Set this flag to True for unbiased initialization
+stochastic_init = True
+
 # Define the biased regions as four rectangles and a square
 biasWidth = (fieldOfView[1] - fieldOfView[0]) / 9  # Adjust the width of the rectangles as desired
 biasRegions = [
@@ -82,7 +85,7 @@ biasRegions = [
 # Generate data with biased initialization
 for i in range(1, nTraj + 1):
     # Sample a region based on the bias
-    if np.random.rand() <= 0.995:  # 90% chance of sampling the biased region
+    if not stochastic_init and np.random.rand() <= 0.995:  # 90% chance of sampling the biased region
         regionIndex = np.random.choice(len(biasRegions))
         region = biasRegions[regionIndex]
 
