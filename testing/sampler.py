@@ -7,7 +7,9 @@ import objects
 import time
 import pickle
 import h5py
-from statsmodels.graphics.tsaplots import plot_acf
+
+#set seed
+np.random.seed(42)
 
 def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     print('Inititalization Started')

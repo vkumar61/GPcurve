@@ -10,6 +10,9 @@ import numba as nb
 from math import lgamma
 from scipy.spatial import KDTree
 
+#setseed
+np.random.seed(42)
+
 def find_closest_point_indices(target_point, points, k=20):
     kdtree = KDTree(points)
     distances, indices = kdtree.query(target_point, k=k)

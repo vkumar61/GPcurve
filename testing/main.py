@@ -4,6 +4,10 @@ import readData
 import numpy as np
 import os
 
+#set seed
+np.random.seed(42)
+
+#get working directory
 cwd = os.getcwd()
 
 #hyper parameters
