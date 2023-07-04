@@ -49,7 +49,6 @@ def initialization(variables, data, covLambda, covL):
     #pull necassary variables
     trajectories = data.trajectories
     nData = data.nData
-    nTraj = data.nTrajectories
     trajectoriesIndex = data.trajectoriesIndex
     nInduX = variables.nInduX
     nInduY = variables.nInduY
@@ -63,7 +62,6 @@ def initialization(variables, data, covLambda, covL):
     minY = min(dataY)
     maxX = max(dataX)
     maxY = max(dataY)
-    nIndu = nInduX*nInduY
     covL = variables.covL
     covLambda = variables.covLambda
 
@@ -204,8 +202,6 @@ def initialization(variables, data, covLambda, covL):
 def diffusionMapSampler(variables, data):
 
     # Extract variables
-    cInduIndu = variables.cInduIndu
-    cInduData = variables.cInduData
     cInduInduInv = variables.cInduInduInv
     deltaT = data.deltaT
     means = variables.dataCoordinates
@@ -215,7 +211,6 @@ def diffusionMapSampler(variables, data):
     dInduOld = variables.dIndu
     cDataIndu = variables.cDataIndu
     P = variables.P
-    mle = variables.mle
     priorMean = variables.priorMean
     epsilon = variables.epsilon
     nIndu = len(dInduOld) 
@@ -294,7 +289,8 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
     #Counter for acceptances and iterations
     accCounter = 0
     iter = 0
-    #shuffle the index to avoid local minima from order of iteration
+
+    #shuffle the index to sample through alpha vect randomly
     shuffledIndex = indexShuffler(len(alphaVect))
 
     #Propose new dIndu by sampling random points in inverse space

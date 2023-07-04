@@ -71,7 +71,7 @@ tracker = 0
 flag = False
 
 # Set this flag to True for unbiased initialization
-stochastic_init = True
+stochastic_init = False
 
 # Define the biased regions as four rectangles and a square
 biasWidth = (fieldOfView[1] - fieldOfView[0]) / 9  # Adjust the width of the rectangles as desired
@@ -134,8 +134,8 @@ for i in range(1, nTraj + 1):
     particleIndex.append(i + tracker)
 
 
-    #sample trajectory length from geometric with mean 20
-    trajLength = np.random.geometric(p=1/20)
+    #sample trajectory length from geometric with mean 20 and minimum length of 5
+    trajLength = 4 + np.random.geometric(p=1/20)
 
 
     #loop through full length of each trajectory

@@ -18,11 +18,8 @@ covLambda = None
 nIter = 10000
 
 # load real data from csv File
-dataPath = os.path.join(cwd, 'Data', 'SyntheticData', 'syntheticData_20230630_135158', 'data.csv')
-dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath, 1)
-
-#Make sure to transform data to nanometers adjusting for pixel size etc
-#dataVect = dataVect*97
+dataPath = os.path.join(cwd, 'Data', 'SyntheticData', 'syntheticData_20230703_164231', 'data.csv')
+dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath)
 
 print(
     'Data was read safely and there are '

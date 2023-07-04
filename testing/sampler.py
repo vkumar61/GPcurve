@@ -1,6 +1,6 @@
 import numpy as np
 from types import SimpleNamespace
-#from scipy import stats
+from scipy import stats
 import matplotlib.pyplot as plt
 import functions
 import objects
@@ -38,8 +38,8 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     pVect = []
     pVect.append(variables.P)
     
-    variables.epsilon = 0.25
-    const = 0.5
+    variables.epsilon = 0.5
+    const = 0
     startTime = time.time()
     for i in range(nIter):
         print(f"Iteration {i+1}/{nIter} ", end="")
