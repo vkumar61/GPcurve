@@ -25,7 +25,7 @@ def saveFunction(function, file_path):
 
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
-    value = 50000 + 35000*(np.sin((x/10000)) + np.sin(y/2500) + np.sin((x+y)/5000) + np.sin(x*y/50000000)) + 75000*np.exp(-((x-10000)**2+(y-7500)**2)/10000000)
+    value = 6e4 + 30000*np.sin(x/2500) + 30000*np.sin(y/2500)
     return np.abs(value/2)
 
 #initial constants
@@ -71,7 +71,7 @@ tracker = 0
 flag = False
 
 # Set this flag to True for unbiased initialization
-stochastic_init = False
+stochastic_init = True
 
 # Define the biased regions as four rectangles and a square
 biasWidth = (fieldOfView[1] - fieldOfView[0]) / 9  # Adjust the width of the rectangles as desired
