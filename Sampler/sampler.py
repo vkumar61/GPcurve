@@ -1,7 +1,5 @@
 import numpy as np
 from types import SimpleNamespace
-from scipy import stats
-import matplotlib.pyplot as plt
 import functions
 import objects
 import time
@@ -43,18 +41,14 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     variables.epsilon = 0.5
     startTime = time.time()
 
-    #iterate over the number of loops
+    #iterate over the number of loops sampling from the point sampler
     for i in range(nIter):
-        print(f"Iteration {i+1}/{nIter} ", end="")
+        print(f"Iteration {i+1}/{nIter}", end=" ")
         t = time.time()
-
-        decider = np.random.uniform()
-        if (i % 100) == 0:
-            print(f"({time.time()-startTime:3f} s)")
-            print(f"Iteration {i+1}/{nIter} ", end="")
         variables, dVectTemp, pVectTemp = functions.diffusionPointSampler(variables, data)
         dVect += list(dVectTemp)
         pVect += list(pVectTemp)
+        print(f"({time.time()-t:.3f}s)")
     endTime = time.time()
         
     print(str(nIter) + " iterations in " + str(endTime-startTime) + " seconds." )

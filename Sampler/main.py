@@ -15,7 +15,7 @@ covL = None
 covLambda = None
 
 #number of samples to generate
-nIter = 10000
+nIter = 100
 
 # load real data from csv File
 dataPath = os.path.join(cwd, 'Data', 'SyntheticData', 'syntheticData_20230703_164231', 'data.csv')
@@ -23,13 +23,11 @@ dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath)
 
 print(
     'Data was read safely and there are '
-    + str(max(set(dataVectIndex)))
+    + str(len(np.unique(dataVectIndex)))
     + ' trajectories and '
     + str(len(dataVectIndex))
     + " data points"
 )
-
-print(dataVect)
 
 #generate samples
 sampler.analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL)

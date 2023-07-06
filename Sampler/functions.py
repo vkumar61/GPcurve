@@ -1,8 +1,6 @@
 import numpy as np
 from types import SimpleNamespace
 from scipy import stats
-import matplotlib.pyplot as plt
-from matplotlib import cm
 import numba as nb
 
 #setseed
@@ -273,8 +271,6 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
             dVectTemp[iter] = dInduOld
             pVectTemp[iter] = pOld
         iter += 1
-    print(f'{accCounter/nIndu} is the acceptence rate') 
-
     return dInduOld, pOld, dDataOld, dVectTemp, pVectTemp
 
 #This function is a Metropolis sampler that samples from inverse gaussian process space 
@@ -303,5 +299,7 @@ def diffusionPointSampler(variables, data):
     variables.dIndu = dIndu
     variables.P = P
     variables.dData = dData
+
+    print(f"{100*len(np.unique(pVect))/nIndu:.2f}%", end=" ")
 
     return variables, dVect, pVect
