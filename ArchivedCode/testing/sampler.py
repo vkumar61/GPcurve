@@ -14,7 +14,6 @@ np.random.seed(42)
 def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     print('Inititalization Started')
     startTime = time.time()
-
     #initialize data and variables
     data = SimpleNamespace(**objects.DATA)
     data.trajectoriesIndex = dataVectIndex
@@ -30,35 +29,38 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     file = open(str(nIter) + " " + str(variables.covLambda) + " " + str(variables.covL) + "data.pkl","wb")
     pickle.dump(data, file) 
     file.close()
-    print("Initialization Sucessful: " + str(endTime - startTime))
-    print("The flat MLE is: " + str(variables.mle))
+    print("Initialization Done: " + str(endTime - startTime))
+    print("Mle: " + str(variables.mle))
 
-    #vectors to store diffusion samples and their initial probabilities
+    #vectors to store diffusion samples and their probabilities
     dVect = []
     dVect.append(variables.dIndu)
     pVect = []
     pVect.append(variables.P)
     
-    #redefine perturbation magnitude for samples
     variables.epsilon = 0.5
+    const = 0
     startTime = time.time()
-
-    #iterate over the number of loops
     for i in range(nIter):
         print(f"Iteration {i+1}/{nIter} ", end="")
         t = time.time()
 
         decider = np.random.uniform()
-        if (i % 100) == 0:
+        if (i % 10000) == 0:
             print(f"({time.time()-startTime:3f} s)")
             print(f"Iteration {i+1}/{nIter} ", end="")
-        variables, dVectTemp, pVectTemp = functions.diffusionPointSampler(variables, data)
-        dVect += list(dVectTemp)
-        pVect += list(pVectTemp)
+        if decider < const:
+            variables = functions.diffusionMapSampler(variables, data)
+            dVect.append(variables.dIndu)
+            pVect.append(variables.P)
+        else:
+            variables, dVectTemp, pVectTemp = functions.diffusionPointSampler(variables, data)
+            dVect += list(dVectTemp)
+            pVect += list(pVectTemp)
+        print(f"({time.time()-t:2f} s)")
     endTime = time.time()
         
-    print(str(nIter) + " iterations in " + str(endTime-startTime) + " seconds." )
-    print("Total # of samples: " + str(len(pVect)))
+    print(str(nIter) + " samples in " + str(endTime-startTime) + " seconds." )
     print("Index # of max probability: " + str(pVect.index(max(pVect))))
 
     #Save Samples as h5 files and time

@@ -4,9 +4,8 @@ PARAMETERS = {
     #General Knowns
     'nInduX': 30,   #number of x inducing points
     'nInduY': 30,   #number of y grid points (total inducing points is nInduY*nInduX)
-    'nFineX': 100,  #fine grid points in x
-    'nFineY': 100,  #fine grid points in y (total fine points is nFineY*nFineX)
-    'nIndu': 0,     #exact # of inducingpoints after trimming
+    'nFineX': 100,   #fine grid points in x
+    'nFineY': 100,   #fine grid points in y (total fine points is nFineY*nFineX)
 
     #Knowns to be evaluated
     'dataCoordinates': None,    #all points of each trajectory exepts final location
@@ -31,8 +30,9 @@ PARAMETERS = {
     'mle': None, #Prior on Inducing point MAP (set to MLE in init)
     'priorMean': None,
 
+
     # Sampler parameters
-    'epsilon': 1e-2,    #perturbation parameter to keep matrix decomp numerically stable and sample magnitude
+    'epsilon': 1e-2,    #perturbation parameter to keep matrix decomp numerically stable
 }
 
 #This is the object of data

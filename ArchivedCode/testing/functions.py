@@ -77,7 +77,7 @@ def initialization(variables, data, covLambda, covL):
         if (trajectoriesIndex[i] == trajectoriesIndex[i-1]):
             sampleCoordinates = np.vstack((sampleCoordinates, trajectories[i]))
     
-    #find MLE assuming flat map
+    #Initial Guess with MLE
     diff = sampleCoordinates - dataCoordinates
     num = np.sum(diff * diff)
     den = 4*deltaT*len(diff)
@@ -137,25 +137,24 @@ def initialization(variables, data, covLambda, covL):
     for i in remove1:    
         indicies.append(np.where(np.all(induCoordinates==i,axis=1))[0][0])
     induCoordinates = np.delete(induCoordinates, indicies, axis = 0)
-    nIndu = len(induCoordinates)
 
     #set up initial sample and mean of prior
-    dIndu = mle * np.ones(nIndu)
+    dIndu = mle * np.ones(len(induCoordinates))
     priorMean = dIndu.copy()
-    
+
     #determine Covarince matrices
     cInduIndu = covMat(induCoordinates, induCoordinates, covLambda, covL)
     cInduData = covMat(induCoordinates, dataCoordinates, covLambda, covL)
     cInduFine = covMat(induCoordinates, fineCoordinates, covLambda, covL)
-    cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(nIndu))
+    cInduInduInv = np.linalg.inv(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(len(dIndu)))
     cDataIndu = cInduData.T @ cInduInduInv
-    cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(nIndu))
+    cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(len(dIndu)))
 
     dData = cDataIndu @ dIndu
     
     if np.any(dData < 0):
         print("Increase the length scale, the # of inducing points, "+
-              "or set the initial Sample to a flat plane")
+              "set the initial Sample to a flat plane")
         exit()
         
     #Likelihood of that data
@@ -167,14 +166,18 @@ def initialization(variables, data, covLambda, covL):
         )
     )
 
-    #Prior of the Data ignoring normalization
+    #Prior of the Data
     diff = dIndu - priorMean
-    prior =  -0.5*(diff.T @ (cInduInduInv @ diff))
+    prior =  (
+            -0.5*(diff.T @ (cInduInduInv @ diff))
+        )
     P = lhood + prior
-    print(f"The initial probability is {P} and there are {nIndu} inducing points.")
+    print(f"The initial probability is {P}")
+
+    #Initial Probability
+    #P = -np.inf
 
     #save all variable parameters
-    variables.nIndu = nIndu
     variables.sampleCoordinates = sampleCoordinates
     variables.dataCoordinates = dataCoordinates
     variables.induCoordinates = induCoordinates
@@ -195,7 +198,66 @@ def initialization(variables, data, covLambda, covL):
 
     return variables
 
-#jitted sampler that proposes surface perturbations in inverse space
+#This function is a Metropolis sampler that samples the whole map from the posterior
+def diffusionMapSampler(variables, data):
+
+    # Extract variables
+    cInduInduInv = variables.cInduInduInv
+    deltaT = data.deltaT
+    means = variables.dataCoordinates
+    samples = variables.sampleCoordinates
+    data = data.trajectories
+    chol = variables.cInduInduChol
+    dInduOld = variables.dIndu
+    cDataIndu = variables.cDataIndu
+    P = variables.P
+    priorMean = variables.priorMean
+    epsilon = variables.epsilon
+    nIndu = len(dInduOld) 
+
+    # Define probability of inducing points
+    def probability(dIndu_, dData_):
+
+        # Prior ignoring normalization
+        diff = dIndu_ - priorMean
+        prior =  (
+            -0.5*(diff.T @ (cInduInduInv @ diff))
+        )
+        
+        #Likelihood of that data
+        lhood = np.sum(
+            stats.norm.logpdf(
+                samples,
+                loc=means,
+                scale=np.sqrt(2*np.vstack((dData_, dData_)).T*deltaT)
+            )
+        )
+        prob = lhood + prior
+
+        return prob
+
+    # Propose new dIndu
+    a = np.random.exponential(epsilon/10)
+    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * a
+    dDataNew = cDataIndu @ dInduNew
+
+    # Make sure sampled diffusion values are all positive
+    if (np.any(dDataNew < 0) or np.any(dInduNew < 0)):
+        return variables
+
+    # Probability of old and new function
+    pOld = P
+    pNew = probability(dInduNew, dDataNew)
+    
+    # Acceptance value
+    acc_prob = pNew - pOld
+    if acc_prob > np.log(np.random.rand()):
+        variables.dIndu = dInduNew
+        variables.dData = dDataNew
+        variables.P = pNew
+
+    return variables
+
 @nb.jit(nopython=True, cache = True)
 def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, pOld, dDataOld, priorMean, covLambda, epsilon):
 
@@ -229,7 +291,7 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
     iter = 0
 
     #shuffle the index to sample through alpha vect randomly
-    shuffledIndex = indexShuffler(nIndu)
+    shuffledIndex = indexShuffler(len(alphaVect))
 
     #Propose new dIndu by sampling random points in inverse space
     for pointIndex in shuffledIndex:
@@ -272,12 +334,12 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
         else:
             dVectTemp[iter] = dInduOld
             pVectTemp[iter] = pOld
-        iter += 1
-    print(f'{accCounter/nIndu} is the acceptence rate') 
+        iter += 1    
+    print(f'{accCounter} is the # of accepted samples') 
 
     return dInduOld, pOld, dDataOld, dVectTemp, pVectTemp
 
-#This function is a Metropolis sampler that samples from inverse gaussian process space 
+#This function is a Metropolis sampler that samples individual points from the posterior 
 def diffusionPointSampler(variables, data):
     
     #necassary variables
@@ -296,7 +358,7 @@ def diffusionPointSampler(variables, data):
     priorMean = variables.priorMean
     covLambda = variables.covLambda
     epsilon = variables.epsilon
-    nIndu = variables.nIndu
+    nIndu = len(dInduOld)
     
     # Run numba version
     dIndu, P , dData, dVect, pVect = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon)
@@ -305,3 +367,113 @@ def diffusionPointSampler(variables, data):
     variables.dData = dData
 
     return variables, dVect, pVect
+
+#This function generates a plot of the MAP as a contour plot
+def plots(variables, dVect, pVect, data):
+
+    #necassary variables
+    nFineX = variables.nFineX
+    nFineY = variables.nFineY
+    cInduFine = variables.cInduFine
+    cInduInduInv = variables.cInduInduInv
+    fineCoordinates = variables.fineCoordinates
+    trajectories = data.trajectories
+
+    #shape for plot
+    shape = (nFineX, nFineY)
+
+    #sample with maximum probability
+    unshapedMap = cInduFine.T @ (cInduInduInv @ dVect[pVect.index(max(pVect))])
+    
+    #reshape variables to make plotting easy
+    shapedMap = np.reshape(unshapedMap, shape)
+    shapedX = np.reshape(fineCoordinates[:,0], shape)
+    shapedY = np.reshape(fineCoordinates[:,1], shape)
+
+    #generate contour plot
+    fig = plt.figure()
+    mapPlot = plt.contour(shapedX, shapedY, shapedMap, levels = 25)
+    plt.clabel(mapPlot, inline=1, fontsize=10)
+    plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.01)
+
+    return fig
+
+#This function plots the probability
+def probPlot(pVect):
+
+    #generate plot
+    fig = plt.figure()
+    plt.plot(pVect)
+    plt.title("Probability per Sample")
+    plt.xlabel("Iteration/Sample")
+    plt.ylabel("Log Probability")
+
+    return fig
+
+#This function plots the mean of all dVect samples
+def meanPlot(variables, dVect, data):
+
+    #necassary variables
+    nFineX = variables.nFineX
+    nFineY = variables.nFineY
+    cInduFine = variables.cInduFine
+    cInduInduInv = variables.cInduInduInv
+    fineCoordinates = variables.fineCoordinates
+    trajectories = data.trajectories
+
+    #shape for plot
+    shape = (nFineX, nFineY)
+
+    #take mean of all samples
+    unshapedMap = cInduFine.T @ (cInduInduInv @ np.mean(dVect, 0))
+    
+    #reshape variables to make plotting easy
+    shapedMap = np.reshape(unshapedMap, shape)
+    shapedX = np.reshape(fineCoordinates[:,0], shape)
+    shapedY = np.reshape(fineCoordinates[:,1], shape)
+
+    #generate contour plot
+    fig = plt.figure()
+    mapPlot = plt.contour(shapedX, shapedY, shapedMap, levels = 25, cmap = cm.autumn)
+    plt.clabel(mapPlot, inline=1, fontsize=10)
+    plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.01, c = "black")
+
+    return fig
+
+def plotThreeD(variables, dVect, data):
+
+    #necassary variables
+    nFineX = variables.nFineX
+    nFineY = variables.nFineY
+    cInduFine = variables.cInduFine
+    cInduInduInv = variables.cInduInduInv
+    fineCoordinates = variables.fineCoordinates
+    trajectories = data.trajectories
+
+    #shape for plot
+    shape = (nFineX, nFineY)
+
+    #take mean of all samples
+    unshapedMap = cInduFine.T @ (cInduInduInv @ np.mean(dVect, 0))
+    
+    #reshape variables to make plotting easy
+    shapedMap = np.reshape(unshapedMap, shape)
+    shapedX = np.reshape(fineCoordinates[:,0], shape)
+    shapedY = np.reshape(fineCoordinates[:,1], shape)
+
+    #generate contour plot
+    fig = plt.axes(projection='3d')
+    fig.plot_surface(shapedX, shapedY, shapedMap, cmap=cm.coolwarm)
+    fig.scatter3D(trajectories[:,0], trajectories[:,1], 0, color = "green", alpha = 0.1, label = "Particle Data")
+    #plt.clabel(mapPlot, inline=1, fontsize=10)
+    #plt.scatter(trajectories[:,0], trajectories[:,1], alpha = 0.01)
+    
+    #black_proxy = plt.Circle((0, 0), 1, fc="k", alpha = 0.5)
+    fig.set_xlabel(r"X ($\mu m$)")
+    fig.set_ylabel(r"Y ($\mu m$)")
+    fig.set_zlabel(r"Diff. Coefficient ($\mu m$)")
+    fig.set_title('Learned Diffusion Map')
+
+    #fig.legend([black_proxy], ["Particle Data"])
+    fig.legend()
+    return fig
