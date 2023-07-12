@@ -24,7 +24,7 @@ def saveFunction(function, file_path):
 
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
-    value = 6e4 + 30000*np.sin(x/2500) + 30000*np.sin(y/2500)
+    value = 6e4 + 30000*np.sin(x/1500) + 30000*np.sin(y/1500)
     return np.abs(value/2)
 
 #initial constants
@@ -70,97 +70,89 @@ tracker = 0
 flag = False
 
 # Set this flag to True for unbiased initialization
-stochastic_init = True
+stochastic_init = False
 
-# Define the biased regions as four rectangles and a square
-biasWidth = (fieldOfView[1] - fieldOfView[0]) / 9  # Adjust the width of the rectangles as desired
-biasRegions = [
-    [fieldOfView[0] + biasWidth, fieldOfView[0] + 4 * biasWidth, fieldOfView[2], fieldOfView[3]],  # Left rectangle
-    [fieldOfView[0] + 2 * biasWidth, fieldOfView[0] + 6 * biasWidth, fieldOfView[2], fieldOfView[3]],  # Middle rectangle
-    [fieldOfView[0] + 5 * biasWidth, fieldOfView[0] + 7 * biasWidth, fieldOfView[2], fieldOfView[3]],  # Right rectangle
-    [fieldOfView[0], fieldOfView[0] + 3 * biasWidth, fieldOfView[2], fieldOfView[2] + 3 * biasWidth]  # Bottom-left square
-]
+# Define the number of grid cells
+nGrid = 500
+centerGrid = 400
+
+# Initialize the bias values for each grid
+biasValues = np.zeros((nGrid, nGrid))
+
+# Calculate the width and height of each grid cell
+gridWidth = (fieldOfView[1] - fieldOfView[0]) / nGrid
+gridHeight = (fieldOfView[3] - fieldOfView[2]) / nGrid
+
+# Assign a total probability of 99.9% to the center 5x5 grids
+centerGridStart = (nGrid - centerGrid) // 2
+centerGridEnd = centerGridStart + centerGrid
+centerGridTotalProb = 0.999
+
+# Randomly assign probabilities to each cell in the center 5x5 grids
+centerGridProbs = np.random.dirichlet(np.ones(centerGrid * centerGrid), size=1) * centerGridTotalProb
+biasValues[centerGridStart:centerGridEnd, centerGridStart:centerGridEnd] = centerGridProbs.reshape((centerGrid, centerGrid))
+
+for i in range(50):
+    randomSpotX = np.random.randint(0,nGrid-100)
+    sizeX = np.random.randint(2, 100)
+    randomSpotY = np.random.randint(0,nGrid-100)
+    sizeY = np.random.randint(2, 100)
+    biasValues[randomSpotX:randomSpotX+sizeX, randomSpotY:randomSpotY+sizeY] = np.zeros((sizeX, sizeY))
+
+# Distribute the remaining probability randomly to the rest of the grids
+remainingGrids = np.logical_and(biasValues == 0, ~np.logical_and(biasValues != 0, biasValues != centerGridProbs))
+remainingGridsCount = np.sum(remainingGrids)
+remainingGridProbEach = (1 - centerGridTotalProb) / remainingGridsCount
+biasValues[remainingGrids] = remainingGridProbEach
 
 # Generate data with biased initialization
 for i in range(1, nTraj + 1):
-    # Sample a region based on the bias
-    if not stochastic_init and np.random.rand() <= 0.995:  # 90% chance of sampling the biased region
-        regionIndex = np.random.choice(len(biasRegions))
-        region = biasRegions[regionIndex]
+    # Sample a grid cell based on the bias values
+    gridProbs = biasValues.flatten() / np.sum(biasValues)  # Normalize the bias values to probabilities
+    selectedGrid = np.random.choice(np.arange(nGrid**2), p=gridProbs)
+    gridX = selectedGrid % nGrid
+    gridY = selectedGrid // nGrid
 
-        # Adjust the height of the region
-        if regionIndex == 0:  # Left rectangle
-            regionHeight = np.random.uniform(0.1, 0.5)  # Adjust the range of height as desired
-            regionWidth = np.random.uniform(0.5, 1)  # Adjust the range of height as desired
-            # Initialize positions within the selected region
-            xMin = region[0] + (region[1] - region[0]) * (1 - regionWidth) / 2
-            xMax = region[1] - (region[1] - region[0]) * (1 - regionWidth) / 2
-            yMin = region[2] + (region[3] - region[2]) * (1 - regionHeight) / 2
-            yMax = region[3] - (region[3] - region[2]) * (1 - regionHeight) / 2
+    # Calculate the boundaries of the selected grid cell
+    gridMinX = fieldOfView[0] + gridX * gridWidth
+    gridMaxX = gridMinX + gridWidth
+    gridMinY = fieldOfView[2] + gridY * gridHeight
+    gridMaxY = gridMinY + gridHeight
 
-        elif regionIndex == 1:
-            regionHeight = np.random.uniform(0.3, 1)  # Adjust the range of height as desired
-            regionWidth = np.random.uniform(0.5, 1)  # Adjust the range of height as desired
-            # Initialize positions within the selected region
-            xMin = region[0] + (region[1] - region[0]) * (1 - regionWidth) / 2
-            xMax = region[1] - (region[1] - region[0]) * (1 - regionWidth) / 2
-            yMin = region[2] + (region[3] - region[2]) * (1 - regionHeight) / 2
-            yMax = region[3] - (region[3] - region[2]) * (1 - regionHeight) / 2
-        elif regionIndex == 2:
-            regionHeight = np.random.uniform(0.1, 0.7)  # Adjust the range of height as desired
-            regionWidth = np.random.uniform(0.5, 1)  # Adjust the range of height as desired
-            # Initialize positions within the selected region
-            xMin = region[0] + (region[1] - region[0]) * (1 - regionWidth) / 2
-            xMax = region[1] - (region[1] - region[0]) * (1 - regionWidth) / 2
-            yMin = region[2] + (region[3] - region[2]) * (1 - regionHeight) / 2
-            yMax = region[3] - (region[3] - region[2]) * (1 - regionHeight) / 2
-        else:  # Bottom-left square
-            regionSize = np.random.uniform(0, 0.1)  # Adjust the size of the square as desired
-            xMin = region[0]
-            xMax = region[1] - regionSize * (region[1] - region[0])
-            yMin = region[2]
-            yMax = region[2] - regionSize * (region[3] - region[2])
-
-        xPrev = np.random.uniform(xMin, xMax)
-        yPrev = np.random.uniform(yMin, yMax)
-    else:
-        # Initialize positions randomly in the entire field of view
-        xPrev = np.random.uniform(fieldOfView[0], fieldOfView[1])
-        yPrev = np.random.uniform(fieldOfView[2], fieldOfView[3])
+    # Initialize positions within the selected grid cell
+    xPrev = np.random.uniform(gridMinX, gridMaxX)
+    yPrev = np.random.uniform(gridMinY, gridMaxY)
 
     xVect.append(xPrev)
     yVect.append(yPrev)
     particleIndex.append(i + tracker)
 
-
-    #sample trajectory length from geometric with mean 20 and minimum length of 5
+    # Sample trajectory length from a geometric distribution with mean 20 and minimum length of 5
     trajLength = 4 + np.random.geometric(p=1/20)
 
-
-    #loop through full length of each trajectory
-    for j in range(1, trajLength+1):
-
-        #Sample diffusion
+    # Loop through the full length of each trajectory
+    for j in range(1, trajLength + 1):
+        # Sample diffusion
         dPoint = diffusion(xPrev, yPrev)
-        sd = np.sqrt(2*dPoint*(timestep))
+        sd = np.sqrt(2 * dPoint * (timestep))
         xNew = np.random.normal(xPrev, sd)
         yNew = np.random.normal(yPrev, sd)
 
-        #save new positions if particle is in field of view
+        # Save new positions if the particle is in the field of view
         if (fieldOfView[0] <= xNew <= fieldOfView[1]) and (fieldOfView[2] <= yNew <= fieldOfView[3]):
-            #this part should be considered a new trajectory
+            # This part should be considered a new trajectory
             xVect.append(xNew)
             yVect.append(yNew)
             if flag:
                 tracker += 1
-                particleIndex.append(i+tracker)
+                particleIndex.append(i + tracker)
                 flag = False
             else:
-                particleIndex.append(i+tracker)
+                particleIndex.append(i + tracker)
         else:
             flag = True
 
-        #update positions
+        # Update positions
         xPrev = xNew
         yPrev = yNew
 

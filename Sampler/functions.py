@@ -85,7 +85,7 @@ def initialization(variables, data, covLambda, covL):
     if covL == None:
         covL = np.max([maxX-minX, maxY-minY]) * 0.1
     if covLambda == None:
-        covLambda = mle/10
+        covLambda = mle * 0.1
 
     #define coordinates for Inducing points
     xIndu = np.linspace(minX-covL, maxX+covL, nInduX)
@@ -104,28 +104,30 @@ def initialization(variables, data, covLambda, covL):
     fineCoordinates = np.vstack((X, Y)).T
     
     #find the inducing points that are on the outside of grid far from data
+    #based on a percentage of the length scale
     remove1 = []
+    perc = 0.1
     for i in xIndu:
         for j in induCoordinates[np.where(induCoordinates[:,0] == i)]:
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
                 remove1.append(j)
             else:
                 break
     for i in yIndu:
         for j in induCoordinates[np.where(induCoordinates[:,1] == i)]:
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
                 remove1.append(j)
             else:
                 break
     for i in xIndu:
         for j in reversed(induCoordinates[np.where(induCoordinates[:,0] == i)]):
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
                 remove1.append(j)
             else:
                 break
     for i in yIndu:
         for j in reversed(induCoordinates[np.where(induCoordinates[:,1] == i)]):
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= 0.67*covL):
+            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
                 remove1.append(j)
             else:
                 break
