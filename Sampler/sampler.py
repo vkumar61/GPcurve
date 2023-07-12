@@ -10,24 +10,29 @@ import h5py
 np.random.seed(42)
 
 def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
+    #Progress Marker
     print('Inititalization Started')
+    
+    #initialize data and variables and time them    
     startTime = time.time()
-
-    #initialize data and variables
     data = SimpleNamespace(**objects.DATA)
     data.trajectoriesIndex = dataVectIndex
     data.trajectories = dataVect
     data.deltaT = deltaT
     data.nData = len(data.trajectoriesIndex)
-    data.nTrajectories = np.unique(data.trajectoriesIndex)
+    data.nTrajectories = len(np.unique(data.trajectoriesIndex))
     variables = functions.initialization(objects.PARAMETERS, data, covLambda, covL)
     endTime = time.time()
+
+    #save variables and data dictionaries to pickle files for easy access when plotting
     file = open(str(nIter) + " " + str(variables.covLambda) + " " + str(variables.covL) + "variables.pkl","wb")
     pickle.dump(variables, file) 
     file.close()
     file = open(str(nIter) + " " + str(variables.covLambda) + " " + str(variables.covL) + "data.pkl","wb")
     pickle.dump(data, file) 
     file.close()
+
+    #Progress Marker
     print("Initialization Sucessful: " + str(endTime - startTime))
     print("The flat MLE is: " + str(variables.mle))
 

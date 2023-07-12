@@ -44,5 +44,5 @@ DATA = {
 
     #INITIALIZED INDEPENDENTLY BASED ON PARAMATERS ABOVE
     'nData': None,              #number of datapoints (set to len(nData))
-    'nTrajectories': None,      #number of trajectories (set to np.unique(trajectoriesIndex))
+    'nTrajectories': None,      #number of trajectories (set to len(np.unique(data.trajectoriesIndex)))
 }

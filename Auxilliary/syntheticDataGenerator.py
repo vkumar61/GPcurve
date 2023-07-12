@@ -1,13 +1,3 @@
-'''
-When this file is run, it takes a given diffusion coefficient map, defined in the def diffusion(x, y),
-and outputs randomized protien trajectories. The ground truth diffusion map is changed by changing the
-function inside of diffusion(point), where point = (x,y) is a set of coordinates. There are some other
-variables that the user may choose to tune, such as average trajectory length, field of view, etc. all 
-of those variables are at the begining of the code and commented conveniantly so the user can changed 
-conveniantly at initialization. Once all the variables are set the code simulates randomized trajectories
-using a random walk.
-'''
-
 #Necessary imports
 import numpy as np
 import inspect
@@ -105,56 +95,81 @@ remainingGridsCount = np.sum(remainingGrids)
 remainingGridProbEach = (1 - centerGridTotalProb) / remainingGridsCount
 biasValues[remainingGrids] = remainingGridProbEach
 
-# Generate data with biased initialization
-for i in range(1, nTraj + 1):
-    # Sample a grid cell based on the bias values
-    gridProbs = biasValues.flatten() / np.sum(biasValues)  # Normalize the bias values to probabilities
-    selectedGrid = np.random.choice(np.arange(nGrid**2), p=gridProbs)
-    gridX = selectedGrid % nGrid
-    gridY = selectedGrid // nGrid
+# Generate data with initialization based on the flag value
+if stochastic_init:
+    # Generate data with purely stochastic initialization
+    for i in range(1, nTraj + 1):
+        xPrev = np.random.uniform(fieldOfView[0], fieldOfView[1])
+        yPrev = np.random.uniform(fieldOfView[2], fieldOfView[3])
 
-    # Calculate the boundaries of the selected grid cell
-    gridMinX = fieldOfView[0] + gridX * gridWidth
-    gridMaxX = gridMinX + gridWidth
-    gridMinY = fieldOfView[2] + gridY * gridHeight
-    gridMaxY = gridMinY + gridHeight
+        xVect.append(xPrev)
+        yVect.append(yPrev)
+        particleIndex.append(i + tracker)
 
-    # Initialize positions within the selected grid cell
-    xPrev = np.random.uniform(gridMinX, gridMaxX)
-    yPrev = np.random.uniform(gridMinY, gridMaxY)
+        trajLength = 4 + np.random.geometric(p=1/20)
 
-    xVect.append(xPrev)
-    yVect.append(yPrev)
-    particleIndex.append(i + tracker)
+        for j in range(1, trajLength + 1):
+            dPoint = diffusion(xPrev, yPrev)
+            sd = np.sqrt(2 * dPoint * (timestep))
+            xNew = np.random.normal(xPrev, sd)
+            yNew = np.random.normal(yPrev, sd)
 
-    # Sample trajectory length from a geometric distribution with mean 20 and minimum length of 5
-    trajLength = 4 + np.random.geometric(p=1/20)
-
-    # Loop through the full length of each trajectory
-    for j in range(1, trajLength + 1):
-        # Sample diffusion
-        dPoint = diffusion(xPrev, yPrev)
-        sd = np.sqrt(2 * dPoint * (timestep))
-        xNew = np.random.normal(xPrev, sd)
-        yNew = np.random.normal(yPrev, sd)
-
-        # Save new positions if the particle is in the field of view
-        if (fieldOfView[0] <= xNew <= fieldOfView[1]) and (fieldOfView[2] <= yNew <= fieldOfView[3]):
-            # This part should be considered a new trajectory
-            xVect.append(xNew)
-            yVect.append(yNew)
-            if flag:
-                tracker += 1
-                particleIndex.append(i + tracker)
-                flag = False
+            if (fieldOfView[0] <= xNew <= fieldOfView[1]) and (fieldOfView[2] <= yNew <= fieldOfView[3]):
+                xVect.append(xNew)
+                yVect.append(yNew)
+                if flag:
+                    tracker += 1
+                    particleIndex.append(i + tracker)
+                    flag = False
+                else:
+                    particleIndex.append(i + tracker)
             else:
-                particleIndex.append(i + tracker)
-        else:
-            flag = True
+                flag = True
 
-        # Update positions
-        xPrev = xNew
-        yPrev = yNew
+            xPrev = xNew
+            yPrev = yNew
+else:
+    # Generate data with biased initialization
+    for i in range(1, nTraj + 1):
+        gridProbs = biasValues.flatten() / np.sum(biasValues)  # Normalize the bias values to probabilities
+        selectedGrid = np.random.choice(np.arange(nGrid**2), p=gridProbs)
+        gridX = selectedGrid % nGrid
+        gridY = selectedGrid // nGrid
+
+        gridMinX = fieldOfView[0] + gridX * gridWidth
+        gridMaxX = gridMinX + gridWidth
+        gridMinY = fieldOfView[2] + gridY * gridHeight
+        gridMaxY = gridMinY + gridHeight
+
+        xPrev = np.random.uniform(gridMinX, gridMaxX)
+        yPrev = np.random.uniform(gridMinY, gridMaxY)
+
+        xVect.append(xPrev)
+        yVect.append(yPrev)
+        particleIndex.append(i + tracker)
+
+        trajLength = 4 + np.random.geometric(p=1/20)
+
+        for j in range(1, trajLength + 1):
+            dPoint = diffusion(xPrev, yPrev)
+            sd = np.sqrt(2 * dPoint * (timestep))
+            xNew = np.random.normal(xPrev, sd)
+            yNew = np.random.normal(yPrev, sd)
+
+            if (fieldOfView[0] <= xNew <= fieldOfView[1]) and (fieldOfView[2] <= yNew <= fieldOfView[3]):
+                xVect.append(xNew)
+                yVect.append(yNew)
+                if flag:
+                    tracker += 1
+                    particleIndex.append(i + tracker)
+                    flag = False
+                else:
+                    particleIndex.append(i + tracker)
+            else:
+                flag = True
+
+            xPrev = xNew
+            yPrev = yNew
 
 # Convert lists to NumPy arrays
 arr1 = np.array(particleIndex)
