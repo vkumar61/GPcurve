@@ -15,10 +15,10 @@ covL = None
 covLambda = None
 
 #number of samples to generate
-nIter = 100
+nIter = 4000
 
 # load real data from csv File
-dataPath = os.path.join(cwd, 'Data', 'SyntheticData', 'syntheticData_20230703_164231', 'data.csv')
+dataPath = os.path.join(cwd, 'Data', 'SyntheticData', 'syntheticData_20230712_062914', 'data.csv')
 dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath)
 
 print(

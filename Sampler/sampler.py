@@ -38,7 +38,7 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     pVect.append(variables.P)
     
     #redefine perturbation magnitude for samples
-    variables.epsilon = 0.5
+    variables.epsilon = 0.2
     startTime = time.time()
 
     #iterate over the number of loops sampling from the point sampler
