@@ -14,8 +14,14 @@ def saveFunction(function, file_path):
 
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
-    value = 6e4 + 30000*np.sin(x/1500) + 30000*np.sin(y/1500)
-    return np.abs(value/2)
+    value = (1e5 + 50000*(np.sin(x/10000)+np.sin(y/10000)) + 
+            20000*np.exp(-((x-5000)**2+(y-5000)**2)/1e7) + 
+            20000*np.exp(-((x-10000)**2+(y-7500)**2)/1e7) + 
+            20000*np.exp(-((x-15000)**2+(y-17500)**2)/1e7) + 
+            20000*np.exp(-((x-5000)**2+(y-17500)**2)/1e7) + 
+            20000*np.exp(-((x-17500)**2+(y-17500)**2)/1e7) + 
+            20000*np.exp(-((x-2500)**2+(y-2500)**2)/1e7))
+    return np.abs(value/4)
 
 #initial constants
 fieldOfView = [0, 20000, 0, 20000] #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
