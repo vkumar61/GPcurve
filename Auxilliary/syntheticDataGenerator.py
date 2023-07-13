@@ -66,7 +66,7 @@ tracker = 0
 flag = False
 
 # Set this flag to True for unbiased initialization
-stochastic_init = False
+stochastic_init = True
 
 # Define the number of grid cells
 nGrid = 500
@@ -96,7 +96,7 @@ for i in range(50):
     biasValues[randomSpotX:randomSpotX+sizeX, randomSpotY:randomSpotY+sizeY] = np.zeros((sizeX, sizeY))
 
 # Distribute the remaining probability randomly to the rest of the grids
-remainingGrids = np.logical_and(biasValues == 0, ~np.logical_and(biasValues != 0, biasValues != centerGridProbs))
+remainingGrids = np.where(biasValues == 0)
 remainingGridsCount = np.sum(remainingGrids)
 remainingGridProbEach = (1 - centerGridTotalProb) / remainingGridsCount
 biasValues[remainingGrids] = remainingGridProbEach
