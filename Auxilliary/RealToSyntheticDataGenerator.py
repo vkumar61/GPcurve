@@ -53,11 +53,12 @@ pVect = f['prob'][()]
 xData = data.trajectories[:, 0]
 yData = data.trajectories[:, 1]
 nTraj = np.max(data.nTrajectories)
+nData = data.nData
 
 #initial constants
 fieldOfView = [np.min(xData), np.max(xData), np.min(yData), np.max(yData)]  #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
-averageTrajLength = 20                                                      #mean length of each trajectory
-averageNumOfTraj = np.floor(nTraj/100)*100                                #mean for the number of trajectories as a multiple of 10
+averageTrajLength = np.ceil(nData/nTraj)                                    #mean length of each trajectory
+averageNumOfTraj = np.floor(nTraj/100)*100                                  #mean for the number of trajectories as a multiple of 10
 timestep = data.deltaT                                                      #temporal resolution (microscope frequency) in Hz
 
 #The exact number of trajectories to be generated
@@ -100,14 +101,10 @@ plt.show()
 tracker = 0
 flag = False
 
-# Set this flag to True for unbiased initialization
-stochastic_init = False
-
 # Learn the biased grid based on the dat
 # Define the grid parameters
 nGrid = 500
 grid_size = (500, 500)  # Number of grid cells in each dimension
-field_of_view = [0, 20000, 0, 20000]  # Field of view boundaries
 
 # Calculate the width and height of each grid cell
 gridWidth = (fieldOfView[1] - fieldOfView[0]) / nGrid
@@ -119,8 +116,8 @@ density_grid = np.zeros(grid_size)
 # Iterate through the x and y coordinates
 for x, y in zip(xData, yData):  # Replace x_coordinates and y_coordinates with your actual data
     # Map the (x, y) coordinate to the corresponding grid cell indices
-    grid_x = int((x - field_of_view[0]) / (field_of_view[1] - field_of_view[0]) * (grid_size[0] - 1))
-    grid_y = int((y - field_of_view[2]) / (field_of_view[3] - field_of_view[2]) * (grid_size[1] - 1))
+    grid_x = int((x - fieldOfView[0]) / (fieldOfView[1] - fieldOfView[0]) * (grid_size[0] - 1))
+    grid_y = int((y - fieldOfView[2]) / (fieldOfView[3] - fieldOfView[2]) * (grid_size[1] - 1))
 
     # Increment the density value for the corresponding grid cell
     density_grid[grid_y, grid_x] += 1
@@ -221,4 +218,3 @@ output_file = os.path.join(unique_directory, 'groundTruth.txt')
 saveFunction(diffusion, output_file)
 
 print(f"The generated files are saved at: '{unique_directory}'.")
-
