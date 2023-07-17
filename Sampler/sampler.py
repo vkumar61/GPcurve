@@ -64,7 +64,7 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
         print(f"({time.time()-t:.3f}s)")
     endTime = time.time()
 
-    #iterate over the number of loops sampling from the point sampler and updating temperature
+    #iterate over the number of loops to get Markovian Samples
     variables.temperature = 1
     variables.epsilon = 0.1
     for i in range(nIter):
