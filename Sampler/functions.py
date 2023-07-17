@@ -1,10 +1,17 @@
+#Neceassary Imports
 import numpy as np
 from types import SimpleNamespace
 from scipy import stats
 import numba as nb
+import matplotlib.pyplot as plt
+from scipy.spatial import cKDTree
 
 #setseed
 np.random.seed(42)
+
+#function that determines temperature
+def slowHeating(iteration, initialTemp, heatRate):
+    return 1 + initialTemp - np.exp(-heatRate*iteration)
 
 #function that calculates logpdf of Normal distribution asumming n=1 and assuming normalization gets subtrcted
 @nb.njit(cache=True)
@@ -83,13 +90,13 @@ def initialization(variables, data, covLambda, covL):
 
     #Estimate Hyperparameters if not chosen by user
     if covL == None:
-        covL = np.max([maxX-minX, maxY-minY]) * 0.1
+        covL = np.max([maxX-minX, maxY-minY])*0.3
     if covLambda == None:
         covLambda = mle * 0.1
 
     #define coordinates for Inducing points
-    xIndu = np.linspace(minX-covL, maxX+covL, nInduX)
-    yIndu = np.linspace(minY-covL, maxY+covL, nInduY)
+    xIndu = np.linspace(minX, maxX, nInduX)
+    yIndu = np.linspace(minY, maxY, nInduY)
     xTemp, yTemp = np.meshgrid(xIndu, yIndu)
     X = np.reshape(xTemp, -1)
     Y = np.reshape(yTemp, -1)
@@ -103,40 +110,14 @@ def initialization(variables, data, covLambda, covL):
     Y = np.reshape(yTemp, -1)
     fineCoordinates = np.vstack((X, Y)).T
     
-    #find the inducing points that are on the outside of grid far from data
-    #based on a percentage of the length scale
-    remove1 = []
-    perc = 0.1
-    for i in xIndu:
-        for j in induCoordinates[np.where(induCoordinates[:,0] == i)]:
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
-                remove1.append(j)
-            else:
-                break
-    for i in yIndu:
-        for j in induCoordinates[np.where(induCoordinates[:,1] == i)]:
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
-                remove1.append(j)
-            else:
-                break
-    for i in xIndu:
-        for j in reversed(induCoordinates[np.where(induCoordinates[:,0] == i)]):
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
-                remove1.append(j)
-            else:
-                break
-    for i in yIndu:
-        for j in reversed(induCoordinates[np.where(induCoordinates[:,1] == i)]):
-            if(np.min(np.linalg.norm(dataCoordinates-j, axis=1)) >= perc*covL):
-                remove1.append(j)
-            else:
-                break
+    # Find nearest data points for each grid point
+    tree = cKDTree(dataCoordinates)
+    distances, indices = tree.query(induCoordinates, k=1)
 
-    #remove the inducing points not near data
-    indicies = []
-    for i in remove1:    
-        indicies.append(np.where(np.all(induCoordinates==i,axis=1))[0][0])
-    induCoordinates = np.delete(induCoordinates, indicies, axis = 0)
+    # Filter out inducing points that are not close to any data points
+    valid_mask = distances < covL*0.1 # Adjust threshold_distance as desired
+    induCoordinates = induCoordinates[valid_mask]
+
     nIndu = len(induCoordinates)
 
     #set up initial sample and mean of prior
@@ -151,21 +132,26 @@ def initialization(variables, data, covLambda, covL):
     cDataIndu = cInduData.T @ cInduInduInv
     cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(nIndu))
 
+    cInduDataInterpolate = covMat(induCoordinates, dataCoordinates, covLambda, covL)
+    diff = sampleCoordinates - dataCoordinates
+    dMleData = np.sum(diff*diff, axis = 1)/(4*deltaT)
+    for i in range(nIndu):
+        dIndu[i] = np.sum(dMleData*cInduDataInterpolate[i])/np.sum(cInduDataInterpolate[i])
     dData = cDataIndu @ dIndu
-    
+        
     if np.any(dData < 0):
         print("Increase the length scale, the # of inducing points, "+
-              "or set the initial Sample to a flat plane")
+            "or set the initial Sample to a flat plane")
         exit()
-        
+            
     #Likelihood of that data
     lhood = np.sum(
-        stats.norm.logpdf(
-            sampleCoordinates,
-            loc=dataCoordinates,
-            scale=np.sqrt(2*np.vstack((dData, dData)).T*deltaT)
+            stats.norm.logpdf(
+                sampleCoordinates,
+                loc=dataCoordinates,
+                scale=np.sqrt(2*np.vstack((dData, dData)).T*deltaT)
+            )
         )
-    )
 
     #Prior of the Data ignoring normalization
     diff = dIndu - priorMean
@@ -194,6 +180,7 @@ def initialization(variables, data, covLambda, covL):
     variables.covL = covL
 
     return variables
+
 
 #jitted sampler that proposes surface perturbations in inverse space
 @nb.jit(nopython=True, cache = True)
@@ -275,6 +262,82 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
         iter += 1
     return dInduOld, pOld, dDataOld, dVectTemp, pVectTemp
 
+
+@nb.jit(nopython=True, cache=True)
+def diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, pOld, dDataOld, priorMean, covLambda, epsilon, temperature):
+
+    pVectTemp = np.zeros((nIndu))
+    dVectTemp = np.zeros((nIndu, nIndu))
+
+    # Calculate probabilities of induced samples
+    def probability(dIndu_, dData_):
+        # Prior ignoring normalization
+        diff = dIndu_ - priorMean
+        prior = -0.5 * (diff.T @ (cInduInduInv @ diff))
+
+        # Likelihood of the data
+        lhood = 0
+        for i in range(samples.shape[0]):
+            for j in range(samples.shape[1]):
+                lhood += (
+                    -0.5 * (samples[i, j] - means[i, j]) ** 2 / (2 * dData_[i] * deltaT)
+                    -0.5 * np.log(2 * np.pi * 2 * dData_[i] * deltaT)
+                )
+        prob = lhood + prior
+
+        return prob
+
+    # Initialize inverse space
+    alphaVect = cInduInduInv @ dInduOld
+
+    # Counter for acceptances and iterations
+    accCounter = 0
+    iter = 0
+
+    # Shuffle the index to sample through alpha vect randomly
+    shuffledIndex = indexShuffler(nIndu)
+
+    # Propose new dIndu by sampling random points in inverse space
+    for pointIndex in shuffledIndex:
+
+        # Propose new alpha point
+        oldAlphaPoint = alphaVect[pointIndex]
+        a = np.random.exponential(epsilon)
+        alphaDiff = a * oldAlphaPoint * np.random.randn()
+        newAlphaPoint = oldAlphaPoint + alphaDiff
+
+        # Incorporate new point into dInduNew and dDataNew
+        dInduNew = dInduOld + cInduIndu[:, pointIndex] * alphaDiff
+        dDataNew = dDataOld + cInduData[pointIndex, :] * alphaDiff
+
+        # Make sure sampled diffusion values are all positive
+        if np.all(dDataNew > 0) and np.all(dInduNew > 0):
+
+            # Probability of old and new function
+            pOld = pOld
+            pNew = probability(dInduNew, dDataNew)
+
+            # Compute acceptance probability based on energy difference
+            energy_diff = pNew - pOld
+
+            # Apply simulated annealing by incorporating temperature
+            if energy_diff/temperature > np.log(np.random.rand()):
+                accCounter += 1
+                dInduOld = dInduNew
+                dVectTemp[iter] = dInduNew
+                pVectTemp[iter] = pNew
+                dDataOld = dDataNew
+                pOld = pNew
+            else:
+                dVectTemp[iter] = dInduOld
+                pVectTemp[iter] = pOld
+        else:
+            dVectTemp[iter] = dInduOld
+            pVectTemp[iter] = pOld
+        iter += 1
+    return dInduOld, pOld, dDataOld, dVectTemp, pVectTemp, accCounter
+
+
 #This function is a Metropolis sampler that samples from inverse gaussian process space 
 def diffusionPointSampler(variables, data):
     
@@ -295,13 +358,17 @@ def diffusionPointSampler(variables, data):
     covLambda = variables.covLambda
     epsilon = variables.epsilon
     nIndu = variables.nIndu
+    temperature = variables.temperature
     
     # Run numba version
-    dIndu, P , dData, dVect, pVect = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon)
+    #dIndu, P , dData, dVect, pVect = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon)
+    dIndu, P , dData, dVect, pVect, accCount = diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon, temperature)
     variables.dIndu = dIndu
     variables.P = P
     variables.dData = dData
 
-    print(f"{100*len(np.unique(pVect))/nIndu:.2f}%", end=" ")
+    accRate = 100*accCount/nIndu
 
-    return variables, dVect, pVect
+    print(f"{accRate:.2f}%", end=" ")
+
+    return variables, dVect, pVect, accRate

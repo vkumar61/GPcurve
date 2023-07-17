@@ -23,16 +23,17 @@ PARAMETERS = {
     # Variables
     'P': float,     #probability of each sample
     'dIndu': None,  #diffusion coefficient sample map at inducing points
-    'dData': None,
+    'dData': None,  #interpolated diffusion from induCoordinates to dataCoordinates
 
     # Priors
-    'covLambda': None,     #coefficient of covariance square exponential kernal (1 only used if hyper parameters on specified)
-    'covL': None,         #lenghts parameter of covariance square exponential kernal (20 only used if hyper parameters on specified)
-    'mle': None, #Prior on Inducing point MAP (set to MLE in init)
-    'priorMean': None,
+    'covLambda': None,      #coefficient of covariance square exponential kernal (1 only used if hyper parameters on specified)
+    'covL': None,           #lenghts parameter of covariance square exponential kernal (20 only used if hyper parameters on specified)
+    'mle': None,            #Prior on Inducing point MAP (set to MLE in init)
+    'priorMean': None,      #Flat surface at MLE to be used as mean of GPP
 
     # Sampler parameters
-    'epsilon': 1e-2,    #perturbation parameter to keep matrix decomp numerically stable and sample magnitude
+    'epsilon': 1e-2,        #perturbation parameter to keep matrix decomp numerically stable and sample magnitude
+    'temperature': 10,      #temperature for simulated annealing will decay to one over time
 }
 
 #This is the object of data

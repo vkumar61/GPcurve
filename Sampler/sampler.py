@@ -43,17 +43,41 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     pVect.append(variables.P)
     
     #redefine perturbation magnitude for samples
-    variables.epsilon = 0.2
+    variables.epsilon = 0.1
     startTime = time.time()
 
-    #iterate over the number of loops sampling from the point sampler
+    #initial temp and cooling rate for targeted annealing
+    initTemp = 1e-3
+    heatRate = 0.001/nIter
+
+    #Burn in super aggressively but do not save the samples, updating proposal size to maintain healthy acceptance rate
+    burnIter = 2*nIter
+    for i in range(burnIter):
+        variables.temperature = functions.slowHeating(i, initTemp, heatRate)
+        print(f"Iteration {i+1}/{burnIter}", end=" ")
+        t = time.time()
+        variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
+        if accRate > 40:
+            variables.epsilon *= 2
+        elif accRate < 10:
+            variables.epsilon /= 2
+        print(f"({time.time()-t:.3f}s)")
+    endTime = time.time()
+
+    #iterate over the number of loops sampling from the point sampler and updating temperature
+    variables.temperature = 1
+    variables.epsilon = 0.1
     for i in range(nIter):
         print(f"Iteration {i+1}/{nIter}", end=" ")
         t = time.time()
-        variables, dVectTemp, pVectTemp = functions.diffusionPointSampler(variables, data)
+        variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
         dVect += list(dVectTemp)
         pVect += list(pVectTemp)
         print(f"({time.time()-t:.3f}s)")
+        if accRate > 40:
+            variables.epsilon *= 2
+        elif accRate < 10:
+            variables.epsilon /= 2
     endTime = time.time()
         
     print(str(nIter) + " iterations in " + str(endTime-startTime) + " seconds." )
