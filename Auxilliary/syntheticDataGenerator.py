@@ -14,14 +14,10 @@ def saveFunction(function, file_path):
 
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
-    value = (1e5 + 50000*(np.sin(x/10000)+np.sin(y/10000)) + 
-            20000*np.exp(-((x-5000)**2+(y-5000)**2)/1e7) + 
-            20000*np.exp(-((x-10000)**2+(y-7500)**2)/1e7) + 
-            20000*np.exp(-((x-15000)**2+(y-17500)**2)/1e7) + 
-            20000*np.exp(-((x-5000)**2+(y-17500)**2)/1e7) + 
-            20000*np.exp(-((x-17500)**2+(y-17500)**2)/1e7) + 
-            20000*np.exp(-((x-2500)**2+(y-2500)**2)/1e7))
-    return np.abs(value/4)
+    value = (1e5 + 
+             30000*np.sin(x/1500) + 
+             30000*np.sin(y/1500))
+    return np.abs(value/2)
 
 #initial constants
 fieldOfView = [0, 20000, 0, 20000] #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
@@ -66,9 +62,9 @@ tracker = 0
 flag = False
 
 # Set this flag to True for unbiased initialization
-stochastic_init = True
+stochastic_init = False
 
-# Define the number of grid cells
+# Define the number of grid for field of view and subgrid that dominates
 nGrid = 500
 centerGrid = 400
 
@@ -79,12 +75,12 @@ biasValues = np.zeros((nGrid, nGrid))
 gridWidth = (fieldOfView[1] - fieldOfView[0]) / nGrid
 gridHeight = (fieldOfView[3] - fieldOfView[2]) / nGrid
 
-# Assign a total probability of 99.9% to the center 5x5 grids
+# Assign a total probability of 99.9% to the center 400x400 grids
 centerGridStart = (nGrid - centerGrid) // 2
 centerGridEnd = centerGridStart + centerGrid
 centerGridTotalProb = 0.999
 
-# Randomly assign probabilities to each cell in the center 5x5 grids
+# Randomly assign probabilities to each cell in the center 400x400 grids
 centerGridProbs = np.random.dirichlet(np.ones(centerGrid * centerGrid), size=1) * centerGridTotalProb
 biasValues[centerGridStart:centerGridEnd, centerGridStart:centerGridEnd] = centerGridProbs.reshape((centerGrid, centerGrid))
 
