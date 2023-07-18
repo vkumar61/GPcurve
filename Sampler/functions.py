@@ -90,7 +90,7 @@ def initialization(variables, data, covLambda, covL):
 
     #Estimate Hyperparameters if not chosen by user
     if covL == None:
-        covL = np.max([maxX-minX, maxY-minY])*0.3
+        covL = np.max([maxX-minX, maxY-minY])*0.2
     if covLambda == None:
         covLambda = mle * 0.1
 
@@ -117,7 +117,6 @@ def initialization(variables, data, covLambda, covL):
     # Filter out inducing points that are not close to any data points
     valid_mask = distances < covL*0.1 # Adjust threshold_distance as desired
     induCoordinates = induCoordinates[valid_mask]
-
     nIndu = len(induCoordinates)
 
     #set up initial sample and mean of prior
@@ -132,31 +131,70 @@ def initialization(variables, data, covLambda, covL):
     cDataIndu = cInduData.T @ cInduInduInv
     cInduInduChol = np.linalg.cholesky(cInduIndu + epsilon*np.mean(cInduIndu)*np.eye(nIndu))
 
-    cInduDataInterpolate = covMat(induCoordinates, dataCoordinates, covLambda, covL)
+    #determine the mle at each individual data point
     diff = sampleCoordinates - dataCoordinates
     dMleData = np.sum(diff*diff, axis = 1)/(4*deltaT)
-    for i in range(nIndu):
-        dIndu[i] = np.sum(dMleData*cInduDataInterpolate[i])/np.sum(cInduDataInterpolate[i])
-    dData = cDataIndu @ dIndu
+
+    @nb.jit(cache = True, nopython = True)
+    def compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu, smoother):
+
+        #set up matrrix for interpolation
+        cInduDataInterpolate = covMat(induCoordinates, dataCoordinates, covLambda, covL/smoother)
+
+        #find smoothing
+        for i in range(nIndu):
+            dIndu[i] = np.sum(dMleData*cInduDataInterpolate[i]) / np.sum(cInduDataInterpolate[i])
         
-    if np.any(dData < 0):
-        print("Increase the length scale, the # of inducing points, "+
-            "or set the initial Sample to a flat plane")
-        exit()
-            
-    #Likelihood of that data
-    lhood = np.sum(
+        dData = cDataIndu @ dIndu
+
+        return dIndu, dData
+
+    def calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv):
+        # Likelihood of the data
+        lhood = np.sum(
             stats.norm.logpdf(
                 sampleCoordinates,
                 loc=dataCoordinates,
-                scale=np.sqrt(2*np.vstack((dData, dData)).T*deltaT)
+                scale=np.sqrt(2*np.vstack((dData, dData)).T * deltaT)
             )
         )
 
-    #Prior of the Data ignoring normalization
-    diff = dIndu - priorMean
-    prior =  -0.5*(diff.T @ (cInduInduInv @ diff))
-    P = lhood + prior
+        # Prior of the Data ignoring normalization
+        diff = dIndu - priorMean
+        prior = -0.5 * (diff.T @ (cInduInduInv @ diff))
+        pTemp = lhood + prior
+
+        return pTemp
+
+    P = -np.inf     # Set to negative infinity initially or any other large negative value to ensure the loop runs at least once
+    pTemp = 0       # Set to 0 to garuntee first iteration
+    smoother = 1.0  # Initialize the smoother variable with a floating-point value
+    increment = 1.0   # Initial increment for the smoother
+
+    #deterministic optimization to maximize log posterior
+    for _ in range(100):
+        dIndu, dData = compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu, smoother)
+        pTemp = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
+
+        if np.any(dData < 0):
+            print("Increase the length scale, the # of inducing points, or set the initial Sample to a flat plane")
+            exit()
+
+        if pTemp > P:
+            P = pTemp  # Update P to the previous value of pTemp
+        else:
+            smoother -= increment   # Roll back the smoother value to previous step
+            increment *= 0.1        # Reduce the increment
+
+        if increment < 1e-5:
+            break
+
+        smoother += increment
+
+    #compute the initialization based on the value found for smoother
+    dIndu, dData = compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu, smoother)
+    P = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
+
     print(f"The initial probability is {P} and there are {nIndu} inducing points.")
 
     #save all variable parameters

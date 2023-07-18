@@ -62,7 +62,6 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
         elif accRate < 10:
             variables.epsilon /= 2
         print(f"({time.time()-t:.3f}s)")
-    endTime = time.time()
 
     #iterate over the number of loops to get Markovian Samples
     variables.temperature = 1

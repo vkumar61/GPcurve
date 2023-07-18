@@ -18,7 +18,7 @@ covLambda = None
 nIter = 500
 
 # load real data from csv File
-dataPath = os.path.join(cwd, 'Data' , 'CleanData', 'movie011.txt')
+dataPath = os.path.join(cwd, 'Data' , 'CleanData', 'movie009.txt')
 dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath, 97)
 
 print(
