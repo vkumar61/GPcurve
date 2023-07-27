@@ -15,11 +15,11 @@ covL = None
 covLambda = None
 
 #number of samples to generate
-nIter = 500
+nIter = 100
 
 # load real data from csv File
-dataPath = os.path.join(cwd, 'Data' , 'CleanData', 'movie009.txt')
-dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath, 97)
+dataPath = os.path.join(cwd, 'Data', 'CleanData', 'movie011.txt')
+dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath, scale = 97)
 
 print(
     'Data was read safely and there are '

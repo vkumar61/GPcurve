@@ -47,41 +47,52 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     startTime = time.time()
 
     #initial temp and cooling rate for targeted annealing
-    initTemp = 1e-3
-    heatRate = 0.001/nIter
+    initTemp = 10
+    coolRate = np.log(initTemp)/nIter
 
     #Burn in super aggressively but do not save the samples, updating proposal size to maintain healthy acceptance rate
     burnIter = 2*nIter
     for i in range(burnIter):
-        variables.temperature = functions.slowHeating(i, initTemp, heatRate)
+        variables.temperature = functions.expCooling(i, initTemp, coolRate)
         print(f"Iteration {i+1}/{burnIter}", end=" ")
         t = time.time()
         variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
+        dVect.append(variables.dIndu)
+        pVect.append(variables.P)
         if accRate > 40:
-            variables.epsilon *= 2
-        elif accRate < 10:
-            variables.epsilon /= 2
+            variables.epsilon *= 1.1
+        elif accRate < 20:
+            variables.epsilon *= 0.9
         print(f"({time.time()-t:.3f}s)")
 
-    #iterate over the number of loops to get Markovian Samples
+    #set temperature back to 1, and iterate a few times to find ideal magnitude of proposal to maintain healthy acceptance
     variables.temperature = 1
     variables.epsilon = 0.1
+    
+    for i in range(50):
+        print(f"Iteration {i+1}/{50}", end=" ")
+        t = time.time()
+        variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
+        dVect.append(variables.dIndu)
+        pVect.append(variables.P)
+        print(f"({time.time()-t:.3f}s)")
+        if accRate > 22.5:
+            variables.epsilon *= 1.1
+        elif accRate < 27.5:
+            variables.epsilon *= 0.9
+
+    #generate MCMC samples
     for i in range(nIter):
         print(f"Iteration {i+1}/{nIter}", end=" ")
         t = time.time()
         variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
-        dVect += list(dVectTemp)
-        pVect += list(pVectTemp)
+        dVect.append(variables.dIndu)
+        pVect.append(variables.P)
         print(f"({time.time()-t:.3f}s)")
-        if accRate > 40:
-            variables.epsilon *= 2
-        elif accRate < 10:
-            variables.epsilon /= 2
+
     endTime = time.time()
         
     print(str(nIter) + " iterations in " + str(endTime-startTime) + " seconds." )
-    print("Total # of samples: " + str(len(pVect)))
-    print("Index # of max probability: " + str(pVect.index(max(pVect))))
 
     #Save Samples as h5 files and time
     startTime = time.time()

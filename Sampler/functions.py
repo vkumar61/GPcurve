@@ -10,8 +10,8 @@ from scipy.spatial import cKDTree
 np.random.seed(42)
 
 #function that determines temperature
-def slowHeating(iteration, initialTemp, heatRate):
-    return 1 + initialTemp - np.exp(-heatRate*iteration)
+def expCooling(iteration, initialTemp, coolRate):
+    return initialTemp*np.exp(-coolRate*iteration)
 
 #function that calculates logpdf of Normal distribution asumming n=1 and assuming normalization gets subtrcted
 @nb.njit(cache=True)
@@ -136,7 +136,7 @@ def initialization(variables, data, covLambda, covL):
     dMleData = np.sum(diff*diff, axis = 1)/(4*deltaT)
 
     @nb.jit(cache = True, nopython = True)
-    def compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu, smoother):
+    def compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu, smoother=1):
 
         #set up matrrix for interpolation
         cInduDataInterpolate = covMat(induCoordinates, dataCoordinates, covLambda, covL/smoother)
@@ -167,33 +167,15 @@ def initialization(variables, data, covLambda, covL):
         return pTemp
 
     P = -np.inf     # Set to negative infinity initially or any other large negative value to ensure the loop runs at least once
-    pTemp = 0       # Set to 0 to garuntee first iteration
-    smoother = 1.0  # Initialize the smoother variable with a floating-point value
-    increment = 1.0   # Initial increment for the smoother
-
-    #deterministic optimization to maximize log posterior
-    for _ in range(100):
-        dIndu, dData = compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu, smoother)
-        pTemp = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
-
-        if np.any(dData < 0):
-            print("Increase the length scale, the # of inducing points, or set the initial Sample to a flat plane")
-            exit()
-
-        if pTemp > P:
-            P = pTemp  # Update P to the previous value of pTemp
-        else:
-            smoother -= increment   # Roll back the smoother value to previous step
-            increment *= 0.1        # Reduce the increment
-
-        if increment < 1e-5:
-            break
-
-        smoother += increment
 
     #compute the initialization based on the value found for smoother
-    dIndu, dData = compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu, smoother)
+    dIndu, dData = compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu)
     P = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
+    
+    #make sure interpolated estimate is positive
+    if np.any(dData < 0):
+        print("Increase the length scale, the # of inducing points, or set the initial Sample to a flat plane")
+        exit()
 
     print(f"The initial probability is {P} and there are {nIndu} inducing points.")
 
@@ -410,3 +392,70 @@ def diffusionPointSampler(variables, data):
     print(f"{accRate:.2f}%", end=" ")
 
     return variables, dVect, pVect, accRate
+
+#This function is a Metropolis sampler that samples the whole map from the posterior
+def diffusionMapSampler(variables, data):
+
+    # Extract variables
+    nIndu = variables.nIndu
+    cInduIndu = variables.cInduIndu
+    cInduData = variables.cInduData
+    cInduInduInv = variables.cInduInduInv
+    deltaT = data.deltaT
+    means = variables.dataCoordinates
+    samples = variables.sampleCoordinates
+    data = data.trajectories
+    chol = variables.cInduInduChol
+    dInduOld = variables.dIndu
+    cDataIndu = variables.cDataIndu
+    P = variables.P
+    mle = variables.mle
+    priorMean = variables.priorMean
+    epsilon = variables.epsilon
+
+    # Set constants
+    
+
+    # Define probability of inducing points
+    def probability(dIndu_, dData_):
+
+        # Prior
+        diff = dIndu_ - priorMean
+        prior =  (
+            -0.5*(diff.T @ (cInduInduInv @ diff))
+            # -0.5*np.log(np.linalg.slogdet(cInduIndu+np.eye(nIndu)*epsilon)[1])
+        )
+        
+        #Likelihood of that data
+        lhood = np.sum(
+            stats.norm.logpdf(
+                samples,
+                loc=means,
+                scale=np.sqrt(2*np.vstack((dData_, dData_)).T*deltaT)
+            )
+        )
+        prob = lhood + prior
+
+        return prob
+
+    # Propose new dIndu
+    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * 0.001
+    dDataNew = cDataIndu @ dInduNew
+
+    # Make sure sampled diffusion values are all positivelhood
+    if (np.any(dDataNew < 0) or np.any(dInduNew < 0)):
+        return variables
+
+    # Probability of old and new function
+    pOld = P
+    pNew = probability(dInduNew, dDataNew)
+    #print(pNew)
+    
+    # Acceptance value
+    acc_prob = pNew - pOld
+    if acc_prob > np.log(np.random.rand()):
+        variables.dIndu = dInduNew
+        variables.dData = dDataNew
+        variables.P = pNew
+
+    return variables
