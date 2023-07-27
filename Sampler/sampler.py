@@ -37,10 +37,9 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     print("The flat MLE is: " + str(variables.mle))
 
     #vectors to store diffusion samples and their initial probabilities
-    dVect = []
-    dVect.append(variables.dIndu)
-    pVect = []
-    pVect.append(variables.P)
+    h5 = h5py.File('test.h5', 'w')
+    h5.create_dataset(name='P', shape=(nIter,1), chunks=(1,1), dtype='f')
+    h5.create_dataset(name='d', shape=(nIter,variables.nIndu), chunks=(1,variables.nIndu), dtype='f')
     
     #redefine perturbation magnitude for samples
     variables.epsilon = 0.1
@@ -89,7 +88,14 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
         dVect.append(variables.dIndu)
         pVect.append(variables.P)
         print(f"({time.time()-t:.3f}s)")
+        if accRate > 40:
+            variables.epsilon *= 2
+        elif accRate < 10:
+            variables.epsilon /= 2
 
+        h5['P'][i] = variables.P
+        h5['']
+        
     endTime = time.time()
         
     print(str(nIter) + " iterations in " + str(endTime-startTime) + " seconds." )
