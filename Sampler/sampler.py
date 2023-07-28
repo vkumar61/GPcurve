@@ -36,13 +36,13 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     print("Initialization Sucessful: " + str(endTime - startTime))
     print("The flat MLE is: " + str(variables.mle))
 
-    # Get number of iterations
+    #vectors to store diffusion sample    # Get number of iterations
     burnIter = 2*nIter
     burnIter2 = 50
     numTot = burnIter + burnIter2 + nIter
 
-    #vectors to store diffusion samples and their initial probabilities
-    h5 = h5py.File('test.h5', 'w')
+    #vectors to store diffusion samples and their probabilities
+    h5 = h5py.File('Results.h5', 'w')
     h5.create_dataset(name='P', shape=(numTot,1), chunks=(1,1), dtype='f')
     h5.create_dataset(name='d', shape=(numTot,variables.nIndu), chunks=(1,variables.nIndu), dtype='f')
     save_id = 0
@@ -60,7 +60,7 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
         variables.temperature = functions.expCooling(i, initTemp, coolRate)
         print(f"Iteration {i+1}/{burnIter}", end=" ")
         t = time.time()
-        variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
+        variables, accRate = functions.diffusionPointSampler(variables, data)
         if accRate > 40:
             variables.epsilon *= 1.1
         elif accRate < 20:
@@ -79,8 +79,7 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     for i in range(burnIter2):
         print(f"Iteration {i+1}/{50}", end=" ")
         t = time.time()
-        variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
-        print(f"({time.time()-t:.3f}s)")
+        variables, accRate = functions.diffusionPointSampler(variables, data)
         if accRate > 22.5:
             variables.epsilon *= 1.1
         elif accRate < 27.5:
@@ -90,11 +89,13 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
         h5['d'][save_id] = variables.dIndu
         save_id += 1
 
+        print(f"({time.time()-t:.3f}s)")
+
     #generate MCMC samples
     for i in range(nIter):
         print(f"Iteration {i+1}/{nIter}", end=" ")
         t = time.time()
-        variables, dVectTemp, pVectTemp, accRate = functions.diffusionPointSampler(variables, data)
+        variables, accRate = functions.diffusionPointSampler(variables, data)
 
         h5['P'][save_id] = variables.P
         h5['d'][save_id] = variables.dIndu
@@ -108,5 +109,3 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
 
     #Save Samples as h5 files and time
     h5.close()
-
-    return()

@@ -84,11 +84,11 @@ centerGridTotalProb = 0.999
 centerGridProbs = np.random.dirichlet(np.ones(centerGrid * centerGrid), size=1) * centerGridTotalProb
 biasValues[centerGridStart:centerGridEnd, centerGridStart:centerGridEnd] = centerGridProbs.reshape((centerGrid, centerGrid))
 
-for i in range(50):
+for i in range(200):
     randomSpotX = np.random.randint(0,nGrid-100)
-    sizeX = np.random.randint(2, 100)
+    sizeX = np.random.randint(2, 50)
     randomSpotY = np.random.randint(0,nGrid-100)
-    sizeY = np.random.randint(2, 100)
+    sizeY = np.random.randint(2, 50)
     biasValues[randomSpotX:randomSpotX+sizeX, randomSpotY:randomSpotY+sizeY] = np.zeros((sizeX, sizeY))
 
 # Distribute the remaining probability randomly to the rest of the grids

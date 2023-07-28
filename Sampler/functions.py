@@ -286,9 +286,6 @@ def diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataInd
 @nb.jit(nopython=True, cache=True)
 def diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, pOld, dDataOld, priorMean, covLambda, epsilon, temperature):
 
-    pVectTemp = np.zeros((nIndu))
-    dVectTemp = np.zeros((nIndu, nIndu))
-
     # Calculate probabilities of induced samples
     def probability(dIndu_, dData_):
         # Prior ignoring normalization
@@ -310,9 +307,8 @@ def diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataI
     # Initialize inverse space
     alphaVect = cInduInduInv @ dInduOld
 
-    # Counter for acceptances and iterations
+    # Counter for acceptances
     accCounter = 0
-    iter = 0
 
     # Shuffle the index to sample through alpha vect randomly
     shuffledIndex = indexShuffler(nIndu)
@@ -344,18 +340,9 @@ def diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataI
             if energy_diff/temperature > np.log(np.random.rand()):
                 accCounter += 1
                 dInduOld = dInduNew
-                dVectTemp[iter] = dInduNew
-                pVectTemp[iter] = pNew
                 dDataOld = dDataNew
                 pOld = pNew
-            else:
-                dVectTemp[iter] = dInduOld
-                pVectTemp[iter] = pOld
-        else:
-            dVectTemp[iter] = dInduOld
-            pVectTemp[iter] = pOld
-        iter += 1
-    return dInduOld, pOld, dDataOld, dVectTemp, pVectTemp, accCounter
+    return dInduOld, pOld, dDataOld, accCounter
 
 
 #This function is a Metropolis sampler that samples from inverse gaussian process space 
@@ -382,7 +369,7 @@ def diffusionPointSampler(variables, data):
     
     # Run numba version
     #dIndu, P , dData, dVect, pVect = diffusionPointSampler_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon)
-    dIndu, P , dData, dVect, pVect, accCount = diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon, temperature)
+    dIndu, P , dData, accCount = diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataIndu, deltaT, means, samples, data, chol, dInduOld, P, dData, priorMean, covLambda, epsilon, temperature)
     variables.dIndu = dIndu
     variables.P = P
     variables.dData = dData
@@ -391,71 +378,4 @@ def diffusionPointSampler(variables, data):
 
     print(f"{accRate:.2f}%", end=" ")
 
-    return variables, dVect, pVect, accRate
-
-#This function is a Metropolis sampler that samples the whole map from the posterior
-def diffusionMapSampler(variables, data):
-
-    # Extract variables
-    nIndu = variables.nIndu
-    cInduIndu = variables.cInduIndu
-    cInduData = variables.cInduData
-    cInduInduInv = variables.cInduInduInv
-    deltaT = data.deltaT
-    means = variables.dataCoordinates
-    samples = variables.sampleCoordinates
-    data = data.trajectories
-    chol = variables.cInduInduChol
-    dInduOld = variables.dIndu
-    cDataIndu = variables.cDataIndu
-    P = variables.P
-    mle = variables.mle
-    priorMean = variables.priorMean
-    epsilon = variables.epsilon
-
-    # Set constants
-    
-
-    # Define probability of inducing points
-    def probability(dIndu_, dData_):
-
-        # Prior
-        diff = dIndu_ - priorMean
-        prior =  (
-            -0.5*(diff.T @ (cInduInduInv @ diff))
-            # -0.5*np.log(np.linalg.slogdet(cInduIndu+np.eye(nIndu)*epsilon)[1])
-        )
-        
-        #Likelihood of that data
-        lhood = np.sum(
-            stats.norm.logpdf(
-                samples,
-                loc=means,
-                scale=np.sqrt(2*np.vstack((dData_, dData_)).T*deltaT)
-            )
-        )
-        prob = lhood + prior
-
-        return prob
-
-    # Propose new dIndu
-    dInduNew = dInduOld + chol @ np.random.randn(nIndu) * 0.001
-    dDataNew = cDataIndu @ dInduNew
-
-    # Make sure sampled diffusion values are all positivelhood
-    if (np.any(dDataNew < 0) or np.any(dInduNew < 0)):
-        return variables
-
-    # Probability of old and new function
-    pOld = P
-    pNew = probability(dInduNew, dDataNew)
-    #print(pNew)
-    
-    # Acceptance value
-    acc_prob = pNew - pOld
-    if acc_prob > np.log(np.random.rand()):
-        variables.dIndu = dInduNew
-        variables.dData = dDataNew
-        variables.P = pNew
-
-    return variables
+    return variables, accRate
