@@ -15,10 +15,10 @@ covL = None
 covLambda = None
 
 #number of samples to generate
-nIter = 1000
+nIter = 1
 
 # load real data from csv File
-dataPath = 'Data/SyntheticData/syntheticData_20230717_230530/data.csv'
+dataPath = 'C:/Users/vkuma/PresseLab/Research/GPcurve/SyntheticData_Nonmodal/200k/data.csv'
 dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath)
 
 print(

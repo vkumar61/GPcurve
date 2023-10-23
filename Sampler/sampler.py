@@ -36,58 +36,65 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     print("Initialization Sucessful: " + str(endTime - startTime))
     print("The flat MLE is: " + str(variables.mle))
 
-    #vectors to store diffusion sample    # Get number of iterations
+    # Get number of iterations
     burnIter = 2*nIter
-    burnIter2 = 50
+    burnIter2 = 200
     numTot = burnIter + burnIter2 + nIter
 
     #vectors to store diffusion samples and their probabilities
     h5 = h5py.File('Results.h5', 'w')
     h5.create_dataset(name='P', shape=(numTot,1), chunks=(1,1), dtype='f')
     h5.create_dataset(name='d', shape=(numTot,variables.nIndu), chunks=(1,variables.nIndu), dtype='f')
-    save_id = 0
+    totIter = 0
 
     #redefine perturbation magnitude for samples
-    variables.epsilon = 0.1
+    variables.epsilon = np.ones(np.shape(variables.dIndu))
     startTime = time.time()
 
     #initial temp and cooling rate for targeted annealing
-    initTemp = 10
-    coolRate = np.log(initTemp)/nIter
-
+    initTemp = 1
+    coolRate = 0
+    #initTemp = 7.5
+    #coolRate = np.log(initTemp)/burnIter
+    accVect = np.zeros(np.shape(variables.dIndu))
     #Burn in super aggressively but do not save the samples, updating proposal size to maintain healthy acceptance rate
     for i in range(burnIter):
         variables.temperature = functions.expCooling(i, initTemp, coolRate)
         print(f"Iteration {i+1}/{burnIter}", end=" ")
         t = time.time()
-        variables, accRate = functions.diffusionPointSampler(variables, data)
-        if accRate > 40:
-            variables.epsilon *= 1.1
-        elif accRate < 20:
-            variables.epsilon *= 0.9
+        variables, accCount = functions.diffusionPointSampler(variables, data)
         
-        h5['P'][save_id] = variables.P
-        h5['d'][save_id] = variables.dIndu
-        save_id += 1
+        #save the samples
+        h5['P'][totIter] = variables.P
+        h5['d'][totIter] = variables.dIndu
+        totIter += 1
+
+        #update proposal size for next iteration
+        accVect += accCount
+        accVectNorm = 100*accVect/(i+1)
+        variables.epsilon = np.where(accVectNorm > 40, variables.epsilon * 1.5, np.where(accVectNorm < 20, variables.epsilon * 0.5, variables.epsilon))
 
         print(f"({time.time()-t:.3f}s)")
 
-    #set temperature back to 1, and iterate a few times to find ideal magnitude of proposal to maintain healthy acceptance
+    #set temperature back to 1 and acceptance to 0, and iterate a few times to find ideal magnitude of proposal to maintain healthy acceptance
     variables.temperature = 1
-    variables.epsilon = 0.1
-    
-    for i in range(burnIter2):
-        print(f"Iteration {i+1}/{50}", end=" ")
-        t = time.time()
-        variables, accRate = functions.diffusionPointSampler(variables, data)
-        if accRate > 22.5:
-            variables.epsilon *= 1.1
-        elif accRate < 27.5:
-            variables.epsilon *= 0.9
+    accVect = np.zeros(np.shape(variables.dIndu))
 
-        h5['P'][save_id] = variables.P
-        h5['d'][save_id] = variables.dIndu
-        save_id += 1
+    for i in range(burnIter2):
+        print(f"Iteration {i+1}/{burnIter2}", end=" ")
+        t = time.time()
+        variables, accCount = functions.diffusionPointSampler(variables, data)
+
+        #save the sample
+        h5['P'][totIter] = variables.P
+        h5['d'][totIter] = variables.dIndu
+        totIter += 1
+
+        #update proposal size for next iteration
+        accVect += accCount
+        if i>10:
+            accVectNorm = 100*accVect/(i+1)
+            variables.epsilon = np.where(accVectNorm > 27.5, variables.epsilon * 1.25, np.where(accVectNorm < 22.5, variables.epsilon * 0.75, variables.epsilon))
 
         print(f"({time.time()-t:.3f}s)")
 
@@ -95,11 +102,12 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     for i in range(nIter):
         print(f"Iteration {i+1}/{nIter}", end=" ")
         t = time.time()
-        variables, accRate = functions.diffusionPointSampler(variables, data)
+        variables, accCount= functions.diffusionPointSampler(variables, data)
+        accVect += accCount
 
-        h5['P'][save_id] = variables.P
-        h5['d'][save_id] = variables.dIndu
-        save_id += 1
+        h5['P'][totIter] = variables.P
+        h5['d'][totIter] = variables.dIndu
+        totIter += 1
 
         print(f"({time.time()-t:.3f}s)")
         

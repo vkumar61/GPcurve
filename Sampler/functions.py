@@ -13,7 +13,7 @@ np.random.seed(42)
 def expCooling(iteration, initialTemp, coolRate):
     return initialTemp*np.exp(-coolRate*iteration)
 
-#function that calculates logpdf of Normal distribution asumming n=1 and assuming normalization gets subtrcted
+#function that calculates unnormalized logpdf of Normal distribution asumming n=1
 @nb.njit(cache=True)
 def logNormpdf(diff, sigma):
     return -np.log(np.abs(sigma))-0.5*(diff/sigma)**2
@@ -90,7 +90,7 @@ def initialization(variables, data, covLambda, covL):
 
     #Estimate Hyperparameters if not chosen by user
     if covL == None:
-        covL = np.max([maxX-minX, maxY-minY])*0.2
+        covL = np.max([maxX-minX, maxY-minY])*0.05
     if covLambda == None:
         covLambda = mle * 0.1
 
@@ -111,12 +111,12 @@ def initialization(variables, data, covLambda, covL):
     fineCoordinates = np.vstack((X, Y)).T
     
     # Find nearest data points for each grid point
-    tree = cKDTree(dataCoordinates)
-    distances, indices = tree.query(induCoordinates, k=1)
+    #tree = cKDTree(dataCoordinates)
+    #distances, indices = tree.query(induCoordinates, k=1)
 
     # Filter out inducing points that are not close to any data points
-    valid_mask = distances < covL*0.1 # Adjust threshold_distance as desired
-    induCoordinates = induCoordinates[valid_mask]
+    #valid_mask = distances < covL*0.1 # Adjust threshold_distance as desired
+    #induCoordinates = induCoordinates[valid_mask]
     nIndu = len(induCoordinates)
 
     #set up initial sample and mean of prior
@@ -171,7 +171,17 @@ def initialization(variables, data, covLambda, covL):
     #compute the initialization based on the value found for smoother
     dIndu, dData = compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu)
     P = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
-    
+
+    #simulating from groundTruth
+    def diffusion(x, y):
+        value = (1e5 + 
+                30000*np.sin(x/1500) + 
+                30000*np.sin(y/1500))
+        return np.abs(value/2)
+    dIndu = diffusion(induCoordinates[:,0], induCoordinates[:,1]) 
+    dData = diffusion(dataCoordinates[:,0], dataCoordinates[:,1])
+    P = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
+
     #make sure interpolated estimate is positive
     if np.any(dData < 0):
         print("Increase the length scale, the # of inducing points, or set the initial Sample to a flat plane")
@@ -308,7 +318,7 @@ def diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataI
     alphaVect = cInduInduInv @ dInduOld
 
     # Counter for acceptances
-    accCounter = 0
+    accCounter = np.zeros(np.shape(alphaVect))
 
     # Shuffle the index to sample through alpha vect randomly
     shuffledIndex = indexShuffler(nIndu)
@@ -318,7 +328,7 @@ def diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataI
 
         # Propose new alpha point
         oldAlphaPoint = alphaVect[pointIndex]
-        a = np.random.exponential(epsilon)
+        a = np.random.exponential(epsilon[pointIndex])
         alphaDiff = a * oldAlphaPoint * np.random.randn()
         newAlphaPoint = oldAlphaPoint + alphaDiff
 
@@ -338,7 +348,7 @@ def diffusionPointSamplerSA_nb(nIndu, cInduIndu, cInduData, cInduInduInv, cDataI
 
             # Apply simulated annealing by incorporating temperature
             if energy_diff/temperature > np.log(np.random.rand()):
-                accCounter += 1
+                accCounter[pointIndex] = 1
                 dInduOld = dInduNew
                 dDataOld = dDataNew
                 pOld = pNew
@@ -374,8 +384,8 @@ def diffusionPointSampler(variables, data):
     variables.P = P
     variables.dData = dData
 
-    accRate = 100*accCount/nIndu
+    accRate = 100*np.sum(accCount)/nIndu
 
     print(f"{accRate:.2f}%", end=" ")
 
-    return variables, accRate
+    return variables, accCount

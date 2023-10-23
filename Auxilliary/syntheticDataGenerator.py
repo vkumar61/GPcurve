@@ -14,20 +14,16 @@ def saveFunction(function, file_path):
 
 #Define function that establishes form of diffusion coefficient through space use (nm^2)/s as units
 def diffusion(x, y):
-    value = (1e5 + 50000*(np.sin(x/10000)+np.sin(y/10000)) + 
-            20000*np.exp(-((x-5000)**2+(y-5000)**2)/1e7) + 
-            20000*np.exp(-((x-10000)**2+(y-7500)**2)/1e7) + 
-            20000*np.exp(-((x-15000)**2+(y-17500)**2)/1e7) + 
-            20000*np.exp(-((x-5000)**2+(y-17500)**2)/1e7) + 
-            20000*np.exp(-((x-17500)**2+(y-17500)**2)/1e7) + 
-            20000*np.exp(-((x-2500)**2+(y-2500)**2)/1e7))
-    return np.abs(value/4)
+    value = (1e5 + 
+             30000*np.sin(x/1500) + 
+             30000*np.sin(y/1500))
+    return np.abs(value/2)
 
 
 #initial constants
-fieldOfView = [0, 20000, 0, 20000] #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
+fieldOfView = [0, 25000, 0, 25000] #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
 averageTrajLength = 20     #mean length of each trajectory
-averageNumOfTraj = 8000   #mean for the number of trajectories as a multiple of 10
+averageNumOfTraj = 10000   #mean for the number of trajectories (must be a multiple of 10)
 timestep = 1/30            #temporal resolution (microscope frequency) in Hz
 
 #The exact number of trajectories to be generated
@@ -67,7 +63,7 @@ tracker = 0
 flag = False
 
 # Set this flag to True for unbiased initialization
-stochastic_init = False
+stochastic_init = True
 
 # Define the number of grid for field of view and subgrid that dominates
 nGrid = 500

@@ -40,25 +40,25 @@ def diffusion(x, y, matrix):
 
 
 #load in the three files associated with the synthetic Data
-file = open("C:/Users/vkuma/Research/1000 2757.3104802197818 1845.5910891980886variables.pkl", "rb")
+file = open("C:/Users/vkuma/PresseLab/Research/10000 3608.9641175884217 4750.10358variables.pkl", "rb")
 variables = pickle.load(file)
-file = open("C:/Users/vkuma/Research/1000 2757.3104802197818 1845.5910891980886data.pkl", "rb")
+file = open("/Users/vkuma/PresseLab/Research/10000 3608.9641175884217 4750.10358data.pkl", "rb")
 data = pickle.load(file)
-file = "C:/Users/vkuma/Research/1000(2757.3104802197818 1845.5910891980886).h5"
+file = "/Users/vkuma/PresseLab/Research/Results (1).h5"
 f = h5py.File(file, 'r')
-dVect= f['samples'][()]
-pVect = f['prob'][()]
+dVect= f['d'][()]
+pVect = f['P'][()]
 
 #Extract specifics from data namespace
 xData = data.trajectories[:, 0]
 yData = data.trajectories[:, 1]
-nTraj = np.max(data.nTrajectories)
-nData = data.nData
+nTraj = len(np.unique(data.trajectoriesIndex))
+nData = len(xData)
 
 #initial constants
 fieldOfView = [np.min(xData), np.max(xData), np.min(yData), np.max(yData)]  #[Xmin, Xmax, Ymin, Ymax] in nm for field of view
 averageTrajLength = np.ceil(nData/nTraj)                                    #mean length of each trajectory
-averageNumOfTraj = np.floor(nTraj/100)*100                                  #mean for the number of trajectories as a multiple of 10
+averageNumOfTraj = 175000/averageTrajLength                                 #mean for the number of trajectories as a multiple of 10
 timestep = data.deltaT                                                      #temporal resolution (microscope frequency) in Hz
 
 #The exact number of trajectories to be generated
@@ -123,7 +123,7 @@ for x, y in zip(xData, yData):  # Replace x_coordinates and y_coordinates with y
     density_grid[grid_y, grid_x] += 1
 
 # Normalize the density values
-biasValues = density_grid/np.sum(density_grid)  # Normalize by dividing by the total number of data points
+biasValues = np.ones(np.shape(density_grid))/np.sum(np.ones(np.shape(density_grid)))  # Normalize by dividing by the total number of data points
 
 # Generate data with biased initialization
 for i in range(1, nTraj + 1):
@@ -140,20 +140,22 @@ for i in range(1, nTraj + 1):
     gridMaxY = gridMinY + gridHeight
 
     # Initialize positions within the selected grid cell
-    xPrev = np.random.uniform(gridMinX, gridMaxX)
-    yPrev = np.random.uniform(gridMinY, gridMaxY)
+    xPrev = np.random.uniform(fieldOfView[0], fieldOfView[1])
+    yPrev = np.random.uniform(fieldOfView[2], fieldOfView[3])
 
     xVect.append(xPrev)
     yVect.append(yPrev)
     particleIndex.append(i + tracker)
 
     # Sample trajectory length from a geometric distribution with mean 20 and minimum length of 5
-    trajLength = 4 + np.random.geometric(p=1/20)
+    trajLength = 4 + np.random.geometric(p=(1/(averageTrajLength-4)))
 
     # Loop through the full length of each trajectory
     for j in range(1, trajLength + 1):
         # Sample diffusion
         dPoint = diffusion(xPrev, yPrev, matrix)[0]
+        if dPoint < 0:
+            dPoint = 0.1
         sd = np.sqrt(2 * dPoint * (timestep))
         xNew = np.random.normal(xPrev, sd)
         yNew = np.random.normal(yPrev, sd)

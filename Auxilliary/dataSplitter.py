@@ -1,11 +1,12 @@
 import os
 import numpy as np
 
-# Assuming you have the data file path and other variables defined before this point
+# Define necassary variables
 dataPath = 'C:/Users/vkuma/PresseLab/Research/Data/CleanData/movie001.txt'
 scaleFactor = 1
 timeStep = 1/30
 maxDataPoints = 25e4
+
 # Read the CSV file, considering the header
 data = np.genfromtxt(dataPath, delimiter=', ', skip_header=1)
 

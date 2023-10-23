@@ -8,7 +8,7 @@ def dataReader(path, scale=1, deltaT = 1/30):
     dataVectIndex = data[:, 0]
     dataVect = data[:, 1:]
     
-    #make pixel adjustment to nanometers
+    #localization adjustment to nanometers
     dataVect = dataVect[::]*scale
     dataVectIndex = dataVectIndex[::]
     
