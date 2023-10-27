@@ -18,7 +18,7 @@ covLambda = None
 nIter = 1
 
 # load real data from csv File
-dataPath = 'C:/Users/vkuma/PresseLab/Research/GPcurve/SyntheticData_Nonmodal/200k/data.csv'
+dataPath = 'C:/Users/vkuma/PresseLab/Research/Data/SyntheticData_Nonmodal/200k/data.csv'
 dataVect, dataVectIndex, deltaT = readData.dataReader(dataPath)
 
 print(

@@ -90,7 +90,7 @@ def initialization(variables, data, covLambda, covL):
 
     #Estimate Hyperparameters if not chosen by user
     if covL == None:
-        covL = np.max([maxX-minX, maxY-minY])*0.05
+        covL = np.max([maxX-minX, maxY-minY])*0.2
     if covLambda == None:
         covLambda = mle * 0.1
 
@@ -170,16 +170,6 @@ def initialization(variables, data, covLambda, covL):
 
     #compute the initialization based on the value found for smoother
     dIndu, dData = compute_vector(induCoordinates, dataCoordinates, covLambda, covL, dMleData, dIndu, nIndu, cDataIndu)
-    P = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
-
-    #simulating from groundTruth
-    def diffusion(x, y):
-        value = (1e5 + 
-                30000*np.sin(x/1500) + 
-                30000*np.sin(y/1500))
-        return np.abs(value/2)
-    dIndu = diffusion(induCoordinates[:,0], induCoordinates[:,1]) 
-    dData = diffusion(dataCoordinates[:,0], dataCoordinates[:,1])
     P = calculate_log_posterior(dataCoordinates, sampleCoordinates, dData, deltaT, dIndu, priorMean, cInduInduInv)
 
     #make sure interpolated estimate is positive
