@@ -52,10 +52,9 @@ def analyze(nIter, dataVect, dataVectIndex, deltaT, covLambda, covL):
     startTime = time.time()
 
     #initial temp and cooling rate for targeted annealing
-    initTemp = 1
-    coolRate = 0
-    #initTemp = 7.5
-    #coolRate = np.log(initTemp)/burnIter
+    initTemp = 7.5
+    coolRate = np.log(initTemp)/burnIter
+
     accVect = np.zeros(np.shape(variables.dIndu))
     #Burn in super aggressively but do not save the samples, updating proposal size to maintain healthy acceptance rate
     for i in range(burnIter):
