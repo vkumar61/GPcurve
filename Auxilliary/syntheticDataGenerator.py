@@ -109,7 +109,7 @@ if stochastic_init:
         yVect.append(yPrev)
         particleIndex.append(i + tracker)
 
-        trajLength = 4 + np.random.geometric(p=1/20)
+        trajLength = 4 + np.random.geometric(p=1/16)
 
         for j in range(1, trajLength + 1):
             dPoint = diffusion(xPrev, yPrev)
